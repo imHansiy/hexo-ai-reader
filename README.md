@@ -1,6 +1,6 @@
 # hexo-ai-reader
 
-在 Hexo 编译时为文章生成 AI 导读稿，再合成一份连续语音。默认使用内置的纯 JavaScript Qwen3-TTS 渠道，支持切换阿里百炼。文章页提供播放器、导读目录、字幕和正文高亮。访客只加载静态资源，浏览器不会调用生成接口，也不会拿到 API Key。
+在 Hexo 编译时为文章生成 AI 导读稿，再合成一份连续语音。默认使用内置的纯 JavaScript Qwen3-TTS 渠道，支持切换阿里百炼。文章页提供播放器、导读目录、卡片内同步文字和正文高亮。访客只加载静态资源，浏览器不会调用生成接口，也不会拿到 API Key。
 
 日常流程是：**配置 `_config.yml` → 给文章开启导读 → `hexo generate` → 预览或发布**。缓存有效就跳过生成；需要重做时使用强制生成命令。
 
@@ -12,13 +12,13 @@
 
 若选择百炼，需要可调用的 TTS 模型、API Key 和与模型匹配的音色 ID。插件使用已有音色，百炼渠道不负责创建、覆盖或删除音色。
 
-在已有 Hexo 博客根目录安装发布版本：
+在已有 Hexo 博客根目录安装当前主分支版本：
 
 ```bash
-npm install github:imHansiy/hexo-ai-reader#v0.1.0
+npm install github:imHansiy/hexo-ai-reader#main
 ```
 
-Hexo 会自动加载插件，不需要改主题模板或手写加载脚本。使用项目原有的包管理器；已有 pnpm 项目不要混用 npm。需要跟踪开发分支时，可将版本标签换成 `main`。
+Hexo 会自动加载插件，不需要改主题模板或手写加载脚本。使用项目原有的包管理器；已有 pnpm 项目不要混用 npm。`main` 包含本文的人物设定、系统提示词和播放器自定义配置。`v0.1.0` 标签保留初始发布代码，不包含这些新增选项。
 
 本地开发也可以克隆本仓库后，在博客根目录执行 `npm install <插件目录路径>`。正常使用不依赖作者博客、私有文件或额外便捷脚本。
 
@@ -273,11 +273,41 @@ hexo ai-reader --force
 | `tts.instruction` | 内置自然中文讲解指令 | 百炼合成语气，与导读写作风格分别配置 |
 | `narration.max_chars` | `800` | 导读文字长度上限 |
 | `narration.language` | `zh-CN` | 导读语言 |
+| `narration.persona` | 留空 | 人物身份、视角和说话习惯，支持多行文本 |
+| `narration.system_prompt` | 留空 | 补充文本模型的任务要求，支持多行文本 |
 | `narration.style` | 内置自然讲解风格 | 调整导读稿的写作语气 |
-| `player.avatar` | 内置 WebP 头像 | 站内绝对路径或 HTTP(S) 图片 URL |
-| `player.captions` / `player.auto_scroll` / `player.highlight` | 均为 `true` | 默认字幕、正文跟随和高亮 |
+| `player.name` | `海灵` | 角色显示名，用于播放、加载状态和可访问标签 |
+| `player.title` | `<显示名>陪你读` | 播放前及暂停时的卡片标题，留空自动按显示名生成 |
+| `player.avatar` | 留空使用内置 WebP 头像 | 站内绝对路径或 HTTP(S) 图片 URL |
+| `player.auto_scroll` / `player.highlight` | 均为 `true` | 默认正文跟随和高亮 |
 | `player.pause_scroll_ms` | `8000` | 用户手动滚动后暂停跟随的时长 |
 | `player.click_to_seek` | `true` | 点击支持的正文段落跳转导读 |
+
+人物设定、系统提示词和头像都可以省略。需要自定义时，把下面的字段合并进已有的 `ai_reader` 区块，保留现有 `llm`、`tts` 等配置：
+
+```yaml
+ai_reader:
+  narration:
+    persona: |-
+      你是海灵，用“我”和“你”陪读者理解技术文章。
+      语气亲切，不把文章作者的开发或实测经历说成自己的经历。
+    system_prompt: |-
+      先讲用途，再讲关键步骤，最后提醒限制与注意事项。
+      直接讲解内容，避免反复使用“本文介绍”等转述。
+    style: 自然、简洁，像和朋友聊天。
+  player:
+    name: 海灵
+    title: 海灵 · 文章导读
+    avatar: /images/reader-avatar.webp
+```
+
+`persona` 定义角色，`system_prompt` 补充任务要求，`style` 控制表达语气；它们共同用于初稿和超长稿压缩。插件统一约束 JSON 输出、字数、真实 source ID 和事实准确性；自定义提示词仍须遵守这些约束。人物设定和系统提示词只在构建端发送给文本模型，不放进 HTML 或播放器清单。
+
+站内头像示例对应博客的 `source/images/reader-avatar.webp`，随 Hexo 编译复制到站点；插件会自动添加站点 `root` 前缀。也可以填写公开的完整图片地址，例如 `https://images.example.com/avatar.webp`。留空使用内置头像。头像设置只控制播放器图片，语音音色仍由 `tts` 配置。
+
+`player.name` 设置界面显示名，`player.title` 设置播放前和暂停时显示的标题。播放和加载时提示使用显示名，例如“海灵正在为你解读”。人物设定仍由 `narration.persona` 控制；界面显示名不会自动改写朗读稿。
+
+留空或省略新增提示词不会让已有文稿缓存失效。修改人物设定、系统提示词或风格后，下次 `hexo generate` 会生成新文稿；文本变化时补齐语音，文本相同则复用音频。只换头像、显示名或标题会复用文稿和音频，无需强制生成。
 
 已有配置仍兼容环境变量回退：文本的 `OPENAI_BASE_URL`、`OPENAI_API_KEY`、`OPENAI_MODEL`；语音的 `DASHSCOPE_API_KEY`、`TTS_MODEL`、`TTS_VOICE_ID`（或 `HAILING_VOICE_ID`）、`DASHSCOPE_TTS_ENDPOINT`、`DASHSCOPE_WORKSPACE_ID`；模式的 `AI_READER_MODE`。新配置优先按 YAML 字段填写。
 
@@ -332,9 +362,9 @@ hexo ai-reader --clear "_posts/example.md"
 
 ## 8. 播放器和时间轴
 
-播放器提供播放/暂停、目录跳转、拖动进度、前后 10 秒、0.75～2 倍速、最小化与关闭。最小化时音频继续；关闭时暂停并清除高亮。字幕和正文跟随可在设置中关闭，手动滚动默认暂停跟随 8 秒。
+播放器提供播放/暂停、目录跳转、拖动进度、前后 10 秒、0.75～2 倍速、最小化与关闭。朗读文字随播放进度在卡片内切换，不再显示单独的底部字幕栏，也没有独立字幕开关。旧配置中的 `player.captions` 和浏览器保存的字幕偏好不再生效；清单中的 `captions` 时间轴仍用于卡片文字，不影响文稿与音频缓存。最小化时音频继续；关闭时暂停并清除高亮。正文跟随可在设置中关闭，手动滚动默认暂停跟随 8 秒。
 
-播放进度按文章和音频版本保存在本浏览器，刷新或 PJAX 返回后提示继续播放，不自动播放。进度超过 90 天、音频更新或播放完成后不恢复。浏览器禁用存储仍可使用播放器。用户保存的字幕和跟随偏好优先于页面默认设置。
+播放进度按文章和音频版本保存在本浏览器，刷新或 PJAX 返回后提示继续播放，不自动播放。进度超过 90 天、音频更新或播放完成后不恢复。浏览器禁用存储仍可使用播放器。用户保存的跟随偏好优先于页面默认设置。
 
 清单请求 12 秒超时，失败后可点击播放键重试；离开文章取消在途请求并停止旧音频。播放器浮层会还原主题处理过的头像懒加载属性。默认头像是约 7 KB 的 WebP，原始设计参考图仅保留在源码中。
 

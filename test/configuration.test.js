@@ -39,6 +39,34 @@ test('显式百炼渠道的最简配置保持原参数和缓存版本；显式�
   }
 });
 
+test('可选人物设定和系统提示词支持多行 YAML，留空及头像变化保留旧文稿版本', () => {
+  const yaml = require('js-yaml');
+  const raw = yaml.load(`ai_reader:
+  narration:
+    persona: |-
+      你是海灵。
+      用我和你陪读，不冒充作者经历。
+    system_prompt: |-
+      先讲用途，再讲关键步骤。
+      保留限制与注意事项。
+  player:
+    avatar: /images/reader-avatar.webp
+`).ai_reader;
+  const config = resolveConfig(raw);
+  assert.equal(config.narration.persona, '你是海灵。\n用我和你陪读，不冒充作者经历。');
+  assert.equal(config.narration.systemPrompt, '先讲用途，再讲关键步骤。\n保留限制与注意事项。');
+  assert.equal(config.player.avatar, '/images/reader-avatar.webp');
+  const defaults = resolveConfig({});
+  const empty = resolveConfig({ narration: { persona: ' \n ', system_prompt: null }, player: raw.player });
+  assert.deepEqual(empty.narration, defaults.narration);
+  const post = { title: '文章' }, sources = [{ id: 'one', text: '正文' }];
+  assert.equal(guideHash(post, sources, empty), guideHash(post, sources, defaults));
+  assert.notEqual(guideHash(post, sources, config), guideHash(post, sources, defaults));
+  for (const field of ['persona', 'system_prompt']) {
+    assert.throws(() => resolveConfig({ narration: { [field]: { invalid: true } } }), new RegExp(`narration.${field} 必须是文本`));
+  }
+});
+
 async function fixture(t, args = {}) {
   const base = await fs.mkdtemp(path.join(os.tmpdir(), 'reader-config-'));
   t.after(() => fs.rm(base, { recursive: true, force: true }));

@@ -54,8 +54,7 @@
     try {
       const value = JSON.parse(localStorage.getItem(preferenceKey)) || {};
       return { rate: rates.includes(value.rate) ? value.rate : 1,
-        follow: typeof value.follow === 'boolean' ? value.follow : undefined,
-        captions: typeof value.captions === 'boolean' ? value.captions : undefined };
+        follow: typeof value.follow === 'boolean' ? value.follow : undefined };
     } catch { return { rate: 1 }; }
   };
   const savePreference = (key, value) => {
@@ -99,18 +98,11 @@
     const preferences = readPreferences();
     const time = card.querySelector('[data-ai-time]'), text = card.querySelector('[data-ai-text]');
     const subtitle = card.querySelector('[data-ai-subtitle]'), chapter = card.querySelector('[data-ai-chapter]');
-    const captionsToggle = card.querySelector('[data-ai-captions-toggle]');
     const greeting = card.querySelector('[data-ai-greeting]'), completion = card.querySelector('[data-ai-completion]');
+    const displayName = card.dataset.aiName || '海灵';
+    const playerTitle = card.dataset.aiTitle || `${displayName}陪你读`;
     let sentenceKey = '';
     let sentenceAnimation;
-    const captions = document.createElement('section');
-    captions.className = 'ai-reader-captions';
-    captions.setAttribute('aria-label', '导读字幕');
-    captions.hidden = true;
-    captions.innerHTML = '<span class="ai-reader-captions__label" aria-hidden="true">海灵<span data-ai-caption-state>正在导读</span></span><span class="ai-reader-captions__text" data-ai-caption-text></span><button type="button" data-ai-caption-close aria-label="关闭导读字幕" title="关闭字幕，继续播放"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="m7 7 10 10M7 17 17 7"/></svg></button>';
-    document.body.append(captions);
-    const captionText = captions.querySelector('[data-ai-caption-text]');
-    const captionState = captions.querySelector('[data-ai-caption-state]');
     const status = card.querySelector('[data-ai-status]'), follow = card.querySelector('[data-ai-follow]');
     const toggle = card.querySelector('[data-ai-toggle]'), details = card.querySelector('[data-ai-details]');
     details.id = `ai-reader-details-${++instanceId}`;
@@ -131,55 +123,8 @@
       lastProgressSave = Date.now();
     };
     let highlightFrame = 0;
-    let captionsEnabled = captionsToggle.getAttribute('aria-pressed') === 'true', captionActive = -1;
     const listen = (target, event, handler, options = {}) => target.addEventListener(event, handler, { ...options, signal: life.signal });
     const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const hideCaptions = () => {
-      captions.hidden = true;
-      card.style.removeProperty('--air-caption-clearance');
-      document.documentElement.classList.toggle('ai-reader-captions-visible', !!document.querySelector('.ai-reader-captions:not([hidden])'));
-    };
-    const layoutCaptions = () => {
-      if (captions.hidden || life.signal.aborted || !body.isConnected) return;
-      const rect = body.getBoundingClientRect();
-      const left = Math.max(12, Math.min(rect.left - 12, window.innerWidth - 280));
-      let right = Math.min(window.innerWidth - 12, rect.right + 12);
-      const playerRect = card.getBoundingClientRect();
-      if (playerRect.bottom > window.innerHeight - captions.offsetHeight - 24 && playerRect.left > left + 240) {
-        right = Math.min(right, playerRect.left - 20);
-      }
-      captions.style.left = `${left}px`;
-      captions.style.width = `${Math.max(240, right - left)}px`;
-      // 小屏上播放器与字幕上下错开；大屏各自位于侧栏和正文底部。
-      card.style.setProperty('--air-caption-clearance', `${window.innerWidth <= 600 ? captions.offsetHeight + 36 : 0}px`);
-    };
-    const updateCaptions = now => {
-      const cues = manifest?.captions || [];
-      if (view === 'minimized' || !captionsEnabled || !engaged || failed || audio.ended || !cues.length) { hideCaptions(); return; }
-      const index = cues.findIndex(cue => containsTime(cue, now));
-      if (index < 0) { hideCaptions(); return; }
-      const needsLayout = captions.hidden || index !== captionActive;
-      if (index !== captionActive) { captionActive = index; captionText.textContent = cues[index].text; }
-      captionState.textContent = audio.paused ? '已暂停' : buffering ? '缓冲中' : '正在导读';
-      captions.hidden = false;
-      document.documentElement.classList.add('ai-reader-captions-visible');
-      if (needsLayout) layoutCaptions();
-    };
-    const setCaptions = enabled => {
-      captionsEnabled = enabled;
-      captionsToggle.setAttribute('aria-pressed', String(enabled));
-      captionsToggle.setAttribute('aria-label', enabled ? '关闭导读字幕' : '开启导读字幕');
-      updateCaptions(currentTime());
-    };
-    listen(captionsToggle, 'click', () => { setCaptions(!captionsEnabled); savePreference('captions', captionsEnabled); });
-    listen(captions.querySelector('[data-ai-caption-close]'), 'click', () => {
-      setCaptions(false); savePreference('captions', false);
-      // 关闭后焦点回到始终可见的播放按钮，不留在隐藏浮层内。
-      button.focus();
-    });
-    const captionsObserver = new ResizeObserver(layoutCaptions);
-    for (const element of [body, card, captions]) captionsObserver.observe(element);
-    listen(window, 'resize', layoutCaptions, { passive: true });
     const avatar = card.querySelector('[data-ai-avatar]');
     const bubble = card.querySelector('[data-ai-bubble]');
     let view = 'compact';
@@ -195,15 +140,13 @@
       toggle.title = toggle.getAttribute('aria-label');
       avatar.setAttribute('aria-label', value === 'minimized' ? '展开导读播放器' : value === 'expanded' ? '收起导读目录' : '展开导读目录');
       avatar.title = avatar.getAttribute('aria-label');
-      if (manifest) updateCaptions(currentTime());
-      layoutCaptions();
     };
     setView('compact');
     listen(settingsToggle, 'click', () => { settings.hidden = !settings.hidden; settingsToggle.setAttribute('aria-expanded', String(!settings.hidden)); });
     listen(toggle, 'click', () => setView(view === 'expanded' ? 'compact' : 'expanded'));
     listen(avatar, 'click', () => setView(view === 'minimized' ? 'compact' : view === 'expanded' ? 'compact' : 'expanded'));
     listen(card.querySelector('[data-ai-minimize]'), 'click', () => { setView('minimized'); avatar.focus(); });
-    listen(card.querySelector('[data-ai-close]'), 'click', () => { audio.pause(); engaged = false; hideCaptions(); clearHighlight(); setView('minimized'); avatar.focus(); });
+    listen(card.querySelector('[data-ai-close]'), 'click', () => { audio.pause(); engaged = false; clearHighlight(); setView('minimized'); avatar.focus(); });
     listen(card, 'keydown', event => {
       if (event.key === 'Escape') { setView(view === 'expanded' ? 'compact' : 'minimized'); avatar.focus(); }
     });
@@ -262,7 +205,7 @@
     };
     const interrupt = event => {
       if (event.type === 'keydown' && !['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) return;
-      if (card.contains(event.target) || captions.contains(event.target)) return;
+      if (card.contains(event.target)) return;
       if (event.type === 'scroll' && Date.now() < ownScrollUntil) return;
       manualUntil = Date.now() + (manifest?.player.pause_scroll_ms || 8000);
       needsFollow = true;
@@ -274,7 +217,6 @@
     const update = () => {
       if (!manifest || failed) return;
       const now = currentTime();
-      updateCaptions(now);
       time.textContent = `${formatTime(now)} / ${formatTime(manifest.duration)}`;
       if (!scrubbing) range.value = String(now);
       range.style.setProperty('--air-progress', `${Math.min(100, now / manifest.duration * 100)}%`);
@@ -282,7 +224,7 @@
       card.classList.toggle('ai-reader--ended', audio.ended);
       completion.hidden = !audio.ended;
       text.hidden = audio.ended;
-      greeting.textContent = failed ? '导读暂不可用' : buffering && !audio.paused ? '海灵正在准备声音' : audio.paused ? '海灵陪你读' : '海灵正在为你解读';
+      greeting.textContent = failed ? '导读暂不可用' : buffering && !audio.paused ? `${displayName}正在准备声音` : audio.paused ? playerTitle : `${displayName}正在为你解读`;
       const cue = manifest.captions?.find(item => containsTime(item, now));
       const currentSentence = cue?.text || manifest.segments[Math.max(0, active)]?.text || '';
       if (sentenceKey !== currentSentence) {
@@ -331,7 +273,7 @@
       if (!manifest) { if (!loading) await initialize(); return; }
       if (failed) { pendingResume = currentTime(); failed = false; sentenceKey = ''; audio.load(); range.disabled = false; skips.forEach(item => { item.disabled = false; }); chapterButtons.forEach(item => { item.disabled = false; }); }
       if (!audio.paused) { audio.pause(); return; }
-      for (const controller of controllers.values()) if (controller.audio !== audio) { controller.audio.pause(); controller.hideCaptions(); }
+      for (const controller of controllers.values()) if (controller.audio !== audio) controller.audio.pause();
       engaged = true;
       manualUntil = 0; needsFollow = true;
       if (audio.ended) seek(0);
@@ -348,7 +290,7 @@
     };
     listen(audio, 'play', () => { buffering = audio.readyState < 3; playbackState('pause', '暂停 AI 语音导读', true); update(); });
     listen(audio, 'pause', () => { buffering = false; saveProgress(true); playbackState('play', '继续 AI 语音导读'); update(); });
-    listen(audio, 'ended', () => { buffering = false; pendingResume = null; progress?.save(0, true); update(); clearHighlight(); hideCaptions(); engaged = false; playbackState('replay', '再次播放 AI 语音导读'); status.textContent = '本次导读已结束'; subtitle.textContent = '已听完 · 再听一次'; });
+    listen(audio, 'ended', () => { buffering = false; pendingResume = null; progress?.save(0, true); update(); clearHighlight(); engaged = false; playbackState('replay', '再次播放 AI 语音导读'); status.textContent = '本次导读已结束'; subtitle.textContent = '已听完 · 再听一次'; });
     listen(audio, 'loadedmetadata', () => {
       if (pendingResume !== null) { audio.currentTime = pendingResume; pendingResume = null; }
       update();
@@ -356,7 +298,7 @@
     listen(audio, 'timeupdate', () => saveProgress());
     listen(document, 'visibilitychange', () => { if (document.visibilityState === 'hidden') saveProgress(true); });
     listen(window, 'pagehide', () => saveProgress(true));
-    listen(audio, 'error', () => { greeting.textContent = '声音加载失败'; text.textContent = '点击播放按钮，重新加载导读'; text.hidden = false; completion.hidden = true; card.classList.remove('ai-reader--ended'); chapterButtons.forEach(item => { item.disabled = true; }); failed = true; buffering = false; scrubbing = false; playbackState('replay', '重试加载导读音频'); button.disabled = false; skips.forEach(item => { item.disabled = true; }); range.disabled = true; clearHighlight(); hideCaptions(); card.classList.remove('ai-reader--playing', 'ai-reader--buffering'); subtitle.textContent = '加载失败 · 点击重试'; status.textContent = '音频加载失败，可点击播放按钮重试'; });
+    listen(audio, 'error', () => { greeting.textContent = '声音加载失败'; text.textContent = '点击播放按钮，重新加载导读'; text.hidden = false; completion.hidden = true; card.classList.remove('ai-reader--ended'); chapterButtons.forEach(item => { item.disabled = true; }); failed = true; buffering = false; scrubbing = false; playbackState('replay', '重试加载导读音频'); button.disabled = false; skips.forEach(item => { item.disabled = true; }); range.disabled = true; clearHighlight(); card.classList.remove('ai-reader--playing', 'ai-reader--buffering'); subtitle.textContent = '加载失败 · 点击重试'; status.textContent = '音频加载失败，可点击播放按钮重试'; });
     listen(audio, 'waiting', () => { buffering = true; update(); });
     listen(audio, 'playing', () => { buffering = false; update(); });
     listen(audio, 'timeupdate', update);
@@ -390,14 +332,12 @@
     for (const event of ['wheel', 'touchmove', 'pointerdown', 'keydown']) listen(document, event, interrupt, { passive: true, capture: true });
     listen(window, 'scroll', interrupt, { passive: true });
     const controller = {
-      audio, body, card, hideCaptions,
+      audio, body, card,
       dispose() {
         saveProgress(true);
         sentenceAnimation?.cancel();
         highlightObserver.disconnect();
-        captionsObserver.disconnect();
         life.abort(); audio.pause(); audio.removeAttribute('src'); audio.load(); clearHighlight();
-        hideCaptions(); captions.remove();
         card.remove(); controllers.delete(source);
         document.documentElement.classList.toggle('ai-reader-panel-open', !!document.querySelector('[data-ai-reader-floating].ai-reader--expanded'));
       }
@@ -407,7 +347,7 @@
       if (loading || life.signal.aborted) return;
       loading = true; failed = false;
       button.disabled = true;
-      greeting.textContent = '海灵正在准备导读';
+      greeting.textContent = `${displayName}正在准备导读`;
       subtitle.textContent = '正在加载导读…';
       try {
         const loaded = await loadManifest(sameOrigin(source.dataset.aiReaderManifest), life.signal);
@@ -433,8 +373,6 @@
         manifest = loaded;
         progress = createProgressStore(() => localStorage, manifest);
         pendingResume = progress.read() || null;
-        captions.title = manifest.captionAlignment?.precise ? '字幕使用官方字级时间戳' : '字幕时间为估算，可能有少量偏差';
-        setCaptions(preferences.captions ?? manifest.player.captions !== false);
         follow.checked = preferences.follow ?? manifest.player.auto_scroll !== false;
         rate.value = String(preferences.rate); audio.defaultPlaybackRate = preferences.rate; audio.playbackRate = preferences.rate;
         audio.src = audioUrl;
@@ -451,7 +389,6 @@
         if (life.signal.aborted) return;
         manifest = undefined; progress = undefined; pendingResume = null;
         failed = true; status.textContent = '导读加载失败，点击播放按钮重试';
-        hideCaptions();
         subtitle.textContent = '加载失败 · 点击重试'; greeting.textContent = '导读暂不可用'; text.textContent = '点击播放按钮重试加载，正文可继续阅读。';
         playbackState('replay', '重试加载导读');
         button.disabled = false; range.disabled = true;
