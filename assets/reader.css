@@ -1,0 +1,227 @@
+/* 对话气泡：默认 360px，角色头像与气泡重叠；所有控件保持真实可交互。 */
+.ai-reader {
+  --air-accent: #3882f6;
+  --air-muted: #7b8da9;
+  --air-ink: #243653;
+  --air-surface: rgb(255 255 255 / .98);
+  --air-soft: #eaf1ff;
+  --air-track: #e7edf6;
+  --air-border: rgb(255 255 255 / .9);
+  box-sizing: border-box;
+  position: fixed;
+  right: max(28px, env(safe-area-inset-right));
+  bottom: max(88px, calc(env(safe-area-inset-bottom) + 24px), var(--air-caption-clearance, 0px));
+  z-index: 1000;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  margin: 0;
+  color: var(--air-ink);
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  text-align: left;
+  color-scheme: light;
+  animation: air-arrive .4s cubic-bezier(.2,.7,.3,1) both;
+}
+.ai-reader[hidden], .ai-reader [hidden] { display: none !important; }
+.ai-reader *, .ai-reader *::before, .ai-reader *::after { box-sizing: border-box; }
+.ai-reader button, .ai-reader select { font: inherit; cursor: pointer; border: 0; margin: 0; -webkit-tap-highlight-color: transparent; }
+.ai-reader button:disabled, .ai-reader select:disabled { opacity: .45; cursor: default; }
+.ai-reader svg { display: block; flex-shrink: 0; }
+.ai-reader .ai-reader__bubble { position: relative; margin-left: 36px; padding: 12px 18px 12px 62px; border: 1px solid var(--air-border); border-radius: 32px; background: var(--air-surface); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); box-shadow: 0 12px 36px #355c9b1c, 0 3px 9px #5577a80b; }
+.ai-reader .ai-reader__bubble::before { content: ''; position: absolute; left: -9px; top: 39px; width: 20px; height: 22px; border-radius: 3px 0 0 16px; background: var(--air-surface); transform: rotate(32deg); z-index: -1; }
+.ai-reader .ai-reader__portrait { position: absolute; z-index: 2; top: 17px; left: 0; width: 82px; height: 82px; padding: 6px; border-radius: 50%; background: var(--air-surface); box-shadow: 0 5px 20px #6085bc24, 0 0 0 1px #fff8; transition: transform .25s; }
+.ai-reader .ai-reader__portrait:hover { transform: translateY(-2px); }
+.ai-reader .ai-reader__portrait-crop { position: relative; display: block; width: 100%; height: 100%; border-radius: 50%; overflow: hidden; background: #e0ebff; }
+.ai-reader .ai-reader__portrait img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+/* 独立头像沿用原设计角色，由播放器加载。 */
+.ai-reader .ai-reader__avatar-badge { position: absolute; right: -2px; bottom: -2px; display: grid; place-items: center; width: 29px; height: 29px; border-radius: 50%; background: var(--air-surface); box-shadow: 0 2px 8px #416fc421; opacity: 0; transition: opacity .2s; }
+.ai-reader--playing .ai-reader__avatar-badge, .ai-reader--minimized .ai-reader__avatar-badge { opacity: 1; }
+.ai-reader .ai-reader__waves { display: flex; align-items: center; justify-content: center; gap: 2px; height: 20px; color: var(--air-accent); }
+.ai-reader .ai-reader__waves i { display: block; width: 2px; height: 8px; background: currentColor; border-radius: 2px; animation: air-wave .7s ease-in-out infinite alternate; animation-play-state: paused; }
+.ai-reader .ai-reader__waves i:nth-child(3n+1) { height: 5px; animation-delay: -.3s; }
+.ai-reader .ai-reader__waves i:nth-child(3n+2) { height: 15px; animation-delay: -.6s; }
+.ai-reader .ai-reader__avatar-badge i:nth-child(n+6) { display: none; }
+.ai-reader--playing .ai-reader__waves i { animation-play-state: running; }
+.ai-reader--buffering .ai-reader__waves i { animation-play-state: paused; }
+.ai-reader .ai-reader__actions { position: absolute; right: 11px; top: 9px; display: flex; gap: 1px; }
+.ai-reader .ai-reader__actions button { display: grid; place-items: center; width: 23px; height: 23px; padding: 4px; border-radius: 50%; background: transparent; color: var(--air-muted); }
+.ai-reader .ai-reader__actions button:hover { color: var(--air-accent); background: var(--air-soft); }
+.ai-reader .ai-reader__actions svg { width: 15px; height: 15px; }
+.ai-reader .ai-reader__greeting { display: flex; align-items: center; gap: 4px; margin: 0 50px 5px 0; min-height: 18px; color: var(--air-ink); font-size: 11px; white-space: nowrap; }
+.ai-reader .ai-reader__sparkle { color: #edbd65; }
+.ai-reader .ai-reader__text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; width: 100%; height: 42px; overflow: hidden; padding: 0; color: var(--air-ink); background: transparent; text-align: left; font-size: 14px; font-weight: 600; line-height: 21px; }
+.ai-reader .ai-reader__text:hover { color: var(--air-accent); }
+.ai-reader .ai-reader__playback { display: grid; grid-template-columns: minmax(0, 1fr) 42px 40px; align-items: center; gap: 10px; margin-top: 6px; }
+.ai-reader .ai-reader__play { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border-radius: 50%; color: white; background: linear-gradient(140deg, #6da9ff, #3882f6); box-shadow: 0 4px 12px #3882f62b; transition: transform .2s; }
+.ai-reader .ai-reader__play:hover { transform: scale(1.06); }
+.ai-reader .ai-reader__play:active { transform: scale(.95); }
+.ai-reader .ai-reader__play svg { width: 21px; height: 21px; display: none; }
+.ai-reader [data-play-state=play] .ai-reader__icon-play, .ai-reader [data-play-state=pause] .ai-reader__icon-pause, .ai-reader [data-play-state=replay] .ai-reader__icon-replay { display: block; }
+.ai-reader [data-ai-rate] { width: 42px; height: 28px; padding: 2px; appearance: none; text-align: center; border-radius: 16px; background: var(--air-soft); color: var(--air-ink); font-size: 12px; }
+.ai-reader [data-ai-progress] { --air-progress: 0%; display: block; appearance: none; -webkit-appearance: none; width: 100%; height: 14px; margin: 0; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.ai-reader [data-ai-progress]::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: linear-gradient(to right, var(--air-accent), #6eacff var(--air-progress), var(--air-track) var(--air-progress)); }
+.ai-reader [data-ai-progress]::-moz-range-track { height: 4px; border-radius: 4px; background: var(--air-track); }
+.ai-reader [data-ai-progress]::-moz-range-progress { height: 4px; border-radius: 4px; background: var(--air-accent); }
+.ai-reader [data-ai-progress]::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 10px; height: 10px; margin-top: -3px; border-radius: 50%; background: var(--air-accent); opacity: 0; }
+.ai-reader [data-ai-progress]::-moz-range-thumb { width: 10px; height: 10px; border: 0; border-radius: 50%; background: var(--air-accent); opacity: 0; }
+.ai-reader [data-ai-progress]:hover::-webkit-slider-thumb, .ai-reader [data-ai-progress]:focus-visible::-webkit-slider-thumb, .ai-reader [data-ai-progress]:hover::-moz-range-thumb, .ai-reader [data-ai-progress]:focus-visible::-moz-range-thumb { opacity: 1; }
+.ai-reader [data-ai-time] { display: block; margin-top: 1px; color: var(--air-muted); font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ai-reader .ai-reader__subtitle { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.ai-reader .ai-reader__details { margin: 16px -3px 0 -46px; }
+.ai-reader .ai-reader__directory-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.ai-reader .ai-reader__directory-heading strong { font-size: 14px; font-weight: 600; }
+.ai-reader [data-ai-settings-toggle] { padding: 3px 6px; border-radius: 6px; color: var(--air-muted); background: transparent; font-size: 11px; }
+.ai-reader [data-ai-settings-toggle]:hover { background: var(--air-soft); color: var(--air-accent); }
+.ai-reader [data-ai-chapter] { margin-left: auto; margin-right: 9px; color: var(--air-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.ai-reader .ai-reader__directory { list-style: none; padding: 0; margin: 0; max-height: min(180px, 30dvh); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #acc5ed transparent; }
+.ai-reader .ai-reader__directory li { padding: 0; margin: 0 0 3px; }
+.ai-reader .ai-reader__directory button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 8px; border-radius: 8px; background: transparent; color: var(--air-ink); text-align: left; font-size: 12px; line-height: 1.5; }
+.ai-reader .ai-reader__directory button:hover { background: var(--air-soft); }
+.ai-reader .ai-reader__directory button[aria-current=true] { color: #2d66be; background: var(--air-soft); }
+.ai-reader .ai-reader__directory-icon { flex-shrink: 0; color: var(--air-muted); width: 14px; }
+.ai-reader [aria-current=true] .ai-reader__directory-icon { color: var(--air-accent); }
+.ai-reader .ai-reader__directory-icon svg { width: 14px; height: 14px; }
+.ai-reader .ai-reader__directory time { flex-shrink: 0; color: var(--air-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.ai-reader .ai-reader__directory-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ai-reader .ai-reader__options { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--air-track); color: var(--air-muted); font-size: 11px; }
+.ai-reader .ai-reader__options button { padding: 5px; border-radius: 6px; color: inherit; background: transparent; font-size: inherit; }
+.ai-reader .ai-reader__options button:hover, .ai-reader [data-ai-captions-toggle][aria-pressed=true] { color: var(--air-accent); }
+.ai-reader .ai-reader__options label { display: flex; align-items: center; gap: 5px; cursor: pointer; white-space: nowrap; }
+.ai-reader input[type=checkbox] { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.ai-reader .ai-reader__switch { position: relative; display: block; width: 24px; height: 14px; border-radius: 8px; background: #bbc8db; transition: background .2s; }
+.ai-reader .ai-reader__switch::after { content: ''; position: absolute; width: 10px; height: 10px; top: 2px; left: 2px; border-radius: 50%; background: white; transition: transform .2s; }
+.ai-reader input:checked + .ai-reader__switch { background: var(--air-accent); }
+.ai-reader input:checked + .ai-reader__switch::after { transform: translateX(10px); }
+.ai-reader .ai-reader__footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; color: var(--air-muted); font-size: 10px; }
+.ai-reader .ai-reader__badge { white-space: nowrap; }
+.ai-reader .ai-reader__completion strong, .ai-reader .ai-reader__completion span { display: block; font-size: 14px; }
+.ai-reader .ai-reader__completion span { margin-top: 5px; color: var(--air-muted); font-size: 12px; }
+.ai-reader .ai-reader__completion b { color: var(--air-accent); }
+.ai-reader audio { display: none; }
+.ai-reader button:focus-visible, .ai-reader select:focus-visible, .ai-reader input[type=range]:focus-visible, .ai-reader input:focus-visible + .ai-reader__switch { outline: 2px solid var(--air-accent); outline-offset: 3px; }
+.ai-reader--expanded { width: 400px; }
+.ai-reader--expanded .ai-reader__bubble { margin-left: 0; border-radius: 26px; padding: 22px 20px 18px 110px; }
+.ai-reader--expanded .ai-reader__portrait { left: 16px; top: 20px; }
+.ai-reader--expanded .ai-reader__details { margin-left: -94px; }
+.ai-reader--expanded .ai-reader__greeting { margin-right: 45px; }
+.ai-reader--expanded .ai-reader__bubble::before { display: none; }
+.ai-reader--minimized { width: 82px; height: 82px; }
+.ai-reader--minimized .ai-reader__portrait { top: 0; }
+.ai-reader--minimized .ai-reader__bubble { display: none; }
+.ai-reader--minimized.ai-reader--playing .ai-reader__portrait { animation: air-breathe 3s ease-in-out infinite; }
+/* 播放、暂停和完成都由真实 audio 事件驱动。 */
+.ai-reader .ai-reader__voice { display: none; }
+.ai-reader--playing .ai-reader__voice { display: inline-flex; position: absolute; left: 13px; top: 106px; opacity: .8; }
+.ai-reader--expanded.ai-reader--playing .ai-reader__voice { left: 41px; top: 110px; }
+.ai-reader--playing .ai-reader__text { color: #285aa6; }
+.ai-reader--ended .ai-reader__greeting, .ai-reader--ended .ai-reader__timeline, .ai-reader--ended [data-ai-rate] { display: none; }
+.ai-reader--ended .ai-reader__summary { min-height: 74px; padding: 15px 46px 0 0; }
+.ai-reader--ended .ai-reader__playback { position: absolute; right: 18px; top: 50%; margin: -20px 0 0; display: block; }
+.ai-reader--expanded.ai-reader--ended .ai-reader__playback { top: 55px; margin: 0; }
+@keyframes air-wave { from { transform: scaleY(.35); opacity: .55; } to { transform: scaleY(1); opacity: 1; } }
+@keyframes air-arrive { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes air-breathe { 50% { box-shadow: 0 0 0 5px #3882f611, 0 5px 20px #6085bc24; } }
+.ai-reader-captions {
+  box-sizing: border-box;
+  position: fixed;
+  left: 16px;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  z-index: 1001;
+  width: min(840px, calc(100vw - 32px));
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 72px;
+  padding: 14px 16px 14px 22px;
+  border: 1px solid #ffffffd9;
+  border-radius: 18px;
+  color: #244266;
+  background: #fffffff7;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px #355c9b20;
+  font: 18px/1.7 system-ui, -apple-system, sans-serif;
+  pointer-events: none;
+}
+.ai-reader-captions[hidden] { display: none !important; }
+.ai-reader-captions__label { flex-shrink: 0; padding-right: 18px; border-right: 1px solid #dce7f7; color: #3882f6; font-size: 12px; line-height: 1.6; letter-spacing: .06em; }
+.ai-reader-captions__label span { display: block; color: #7b8da9; font-size: 10px; letter-spacing: 0; }
+.ai-reader-captions__text { flex: 1; min-width: 0; text-align: center; overflow-wrap: anywhere; }
+.ai-reader-captions button { flex-shrink: 0; display: grid; place-items: center; width: 28px; height: 32px; margin: 0; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #7b8da9; cursor: pointer; pointer-events: auto; }
+.ai-reader-captions button:hover { color: #3882f6; background: #eaf1ff; }
+.ai-reader-captions button:focus-visible { outline: 2px solid #3882f6; outline-offset: 2px; }
+/* 同一位置只显示导读字幕；退出后恢复音乐插件原本的歌词状态。 */
+html.ai-reader-captions-visible #desktopLyrics,
+html.ai-reader-captions-visible .mw-float-lyrics { visibility: hidden !important; }
+[data-ai-reader-body] { position: relative; isolation: isolate; }
+[data-ai-reader-body] [data-ai-source] { scroll-margin-top: 100px; }
+[data-ai-reader-body]::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  top: var(--air-highlight-top, 0px);
+  left: -12px;
+  right: -12px;
+  height: var(--air-highlight-height, 0px);
+  border-radius: 12px;
+  border: 1px solid #3882f622;
+  border-left: 3px solid #3882f6;
+  background: #3882f610;
+  opacity: 0;
+  transition: top .3s, height .3s, opacity .3s;
+}
+[data-ai-reader-body].ai-reader-has-highlight::before { opacity: 1; }
+@keyframes air-wave { from { transform: scaleY(.4); } to { transform: scaleY(1); } }
+
+
+:is([color-scheme="dark"], [data-theme="dark"]) .ai-reader {
+  --air-accent: #69a3ff; --air-muted: #a7b7ce; --air-ink: #ecf2ff; --air-surface: rgb(32 45 64 / .94); --air-soft: #344b6c; --air-track: #465773; --air-border: #647da542; color-scheme: dark;
+}
+:is([color-scheme="dark"], [data-theme="dark"]) .ai-reader--playing .ai-reader__text { color: #b8d4ff; }
+:is([color-scheme="dark"], [data-theme="dark"]) .ai-reader__directory button[aria-current=true] { color: #c6ddff; }
+:is([color-scheme="dark"], [data-theme="dark"]) .ai-reader-captions { background: #202d40ef; color: #ecf2ff; border-color: #647da542; }
+:is([color-scheme="dark"], [data-theme="dark"]) .ai-reader-captions__label { color: #9bc3ff; border-color: #647da542; }
+:is([color-scheme="dark"], [data-theme="dark"]) .ai-reader-captions button:hover { background: #344b6c; color: #c6ddff; }
+@media (prefers-color-scheme: dark) {
+  html:not([color-scheme="light"]):not([data-theme="light"]) .ai-reader { --air-accent: #69a3ff; --air-muted: #a7b7ce; --air-ink: #ecf2ff; --air-surface: rgb(32 45 64 / .94); --air-soft: #344b6c; --air-track: #465773; --air-border: #647da542; color-scheme: dark; }
+  html:not([color-scheme="light"]):not([data-theme="light"]) .ai-reader--playing .ai-reader__text { color: #b8d4ff; }
+  html:not([color-scheme="light"]):not([data-theme="light"]) .ai-reader__directory button[aria-current=true] { color: #c6ddff; }
+  html:not([color-scheme="light"]):not([data-theme="light"]) .ai-reader-captions { background: #202d40ef; color: #ecf2ff; border-color: #647da542; }
+}
+@media (max-width: 600px) {
+  html.ai-reader-panel-open #desktopLyrics, html.ai-reader-panel-open .mw-float-lyrics { visibility: hidden !important; }
+  .ai-reader { right: max(12px, env(safe-area-inset-right)); bottom: max(24px, calc(env(safe-area-inset-bottom) + 12px), var(--air-caption-clearance, 0px)); max-width: calc(100vw - 24px); }
+  .ai-reader:not(.ai-reader--expanded):not(.ai-reader--minimized) { width: 320px; }
+  .ai-reader:not(.ai-reader--expanded) .ai-reader__bubble { margin-left: 28px; padding: 13px 16px 13px 58px; border-radius: 32px; }
+  .ai-reader:not(.ai-reader--expanded) .ai-reader__portrait { width: 72px; height: 72px; top: 12px; padding: 5px; }
+  .ai-reader:not(.ai-reader--expanded) .ai-reader__text { white-space: nowrap; display: block; text-overflow: ellipsis; height: 20px; font-size: 12px; line-height: 20px; }
+  .ai-reader:not(.ai-reader--expanded) .ai-reader__greeting { display: none; }
+  .ai-reader:not(.ai-reader--expanded) [data-ai-rate] { display: none; }
+  .ai-reader:not(.ai-reader--expanded) .ai-reader__playback { grid-template-columns: minmax(0, 1fr) 40px; margin-top: 3px; gap: 16px; }
+  .ai-reader:not(.ai-reader--expanded) .ai-reader__summary { padding-top: 8px; }
+  .ai-reader:not(.ai-reader--expanded) .ai-reader__actions { top: -9px; right: 3px; }
+  .ai-reader:not(.ai-reader--expanded) .ai-reader__actions [data-ai-minimize] { display: none; }
+  .ai-reader:not(.ai-reader--expanded) .ai-reader__actions [data-ai-close] { background: var(--air-surface); box-shadow: 0 2px 8px #355c9b15; }
+  .ai-reader:not(.ai-reader--expanded) .ai-reader__voice { display: none; }
+  .ai-reader--minimized { width: 72px; height: 72px; }
+  .ai-reader.ai-reader--minimized .ai-reader__portrait { top: 0; }
+  .ai-reader--expanded .ai-reader__bubble { padding-left: 95px; padding-right: 16px; }
+  .ai-reader--expanded .ai-reader__portrait { left: 12px; width: 70px; height: 70px; }
+  .ai-reader--expanded .ai-reader__details { margin-left: -79px; }
+  .ai-reader--expanded .ai-reader__directory { max-height: min(180px, 25dvh); }
+  .ai-reader--expanded .ai-reader__voice { display: none; }
+  .ai-reader .ai-reader__actions button { width: 28px; height: 28px; }
+  .ai-reader .ai-reader__options { flex-wrap: wrap; }
+  .ai-reader-captions { bottom: max(12px, env(safe-area-inset-bottom)); min-height: 62px; gap: 10px; padding: 12px 10px 12px 16px; border-radius: 18px; font-size: clamp(13px, 4vw, 16px); }
+  .ai-reader-captions__label { display: none; }
+}
+@media (max-height: 600px) {
+  .ai-reader--expanded .ai-reader__bubble { max-height: calc(100dvh - 150px - var(--air-caption-clearance, 0px)); overflow-y: auto; overscroll-behavior: contain; }
+}
+@media (pointer: coarse) {
+  .ai-reader [data-ai-progress] { height: 22px; }
+  .ai-reader .ai-reader__options button, .ai-reader .ai-reader__options label { min-height: 40px; }
+  .ai-reader .ai-reader__play { width: 42px; height: 42px; }
+}
+@media (prefers-reduced-motion: reduce) { .ai-reader, .ai-reader *, .ai-reader *::after, [data-ai-reader-body]::before, [data-ai-reader-body] [data-ai-source] { transition: none !important; animation: none !important; } }
+@media print { .ai-reader, .ai-reader-captions { display: none; } [data-ai-reader-body]::before { display: none; } }

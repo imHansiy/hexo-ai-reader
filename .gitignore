@@ -1,0 +1,11 @@
+node_modules/
+.env
+.env.*
+!.env.ai-reader.example
+.cache/
+.private/
+public/
+db.json
+voice/
+*.tgz
+*.log

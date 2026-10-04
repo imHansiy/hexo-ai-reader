@@ -1,0 +1,54 @@
+{
+  "name": "hexo-ai-reader",
+  "version": "0.1.0",
+  "description": "Hexo 构建时 AI 语音导读与正文同步高亮",
+  "main": "index.js",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "files": [
+    "index.js",
+    "lib",
+    "assets/reader.js",
+    "assets/reader.css",
+    "assets/avatar.webp",
+    "README.md",
+    "DESIGN_REVIEW.md",
+    "AGENTS.md",
+    "LICENSE",
+    ".env.ai-reader.example"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "cheerio": "1.0.0",
+    "music-metadata": "^10.9.1",
+    "js-yaml": "^4.1.0"
+  },
+  "peerDependencies": {
+    "hexo": ">=6"
+  },
+  "author": "imHansiy",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/imHansiy/hexo-ai-reader.git"
+  },
+  "homepage": "https://github.com/imHansiy/hexo-ai-reader#readme",
+  "bugs": {
+    "url": "https://github.com/imHansiy/hexo-ai-reader/issues"
+  },
+  "keywords": [
+    "hexo",
+    "tts",
+    "qwen3",
+    "dashscope",
+    "ai-reader"
+  ],
+  "devDependencies": {
+    "hexo": "^8.1.2",
+    "hexo-renderer-ejs": "^2.0.0",
+    "hexo-renderer-marked": "^7.0.1"
+  }
+}
