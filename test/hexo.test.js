@@ -22,6 +22,7 @@ test('真实 Hexo 构建：自动生成、缓存跳过、强制生成、离线�
     await hexo.init();
     await hexo.loadPlugin(require.resolve('hexo-renderer-marked'));
     await hexo.loadPlugin(require.resolve('hexo-renderer-ejs'));
+    hexo.config.ai_reader.narration = { persona: 'private-persona-setting', system_prompt: 'private-system-instruction' };
     register(hexo);
     // 模拟 hide-posts 提前缓存 Warehouse query；插件不能只改另一份文档副本。
     hexo.extend.filter.register('before_generate', () => hexo.locals.set('posts', hexo.model('Post').find({ published: true })), 20);
@@ -48,15 +49,31 @@ test('真实 Hexo 构建：自动生成、缓存跳过、强制生成、离线�
     assert.ok(manifest.captions.length >= manifest.segments.length);
     assert.equal(manifest.captions[0].start, 0);
     assert.equal(manifest.captions.at(-1).end, manifest.duration);
-    assert.equal(manifest.player.captions, true);
+    assert.doesNotMatch(html, /data-ai-captions-toggle/);
+    assert.equal(manifest.player.captions, undefined);
     assert.ok(manifest.audio.startsWith('/blog/ai-reader/'));
     assert.doesNotMatch(JSON.stringify(manifest), /api_key|workspace_id|voice-test|Bearer/);
+    assert.doesNotMatch(JSON.stringify(manifest) + html, /private-persona-setting|private-system-instruction|systemPrompt/);
     const ready = JSON.parse(await fs.readFile(path.join(directory, '.cache/hexo-ai-reader', key, 'ready-mock.json'), 'utf8'));
     const cachedAudio = path.join(directory, '.cache/hexo-ai-reader', key, 'audio', ready.audioKey, 'narration.wav');
     const before = (await fs.stat(cachedAudio)).mtimeMs;
     await hexo.call('generate', {});
     assert.equal((await fs.stat(cachedAudio)).mtimeMs, before);
     assert.equal(((await readPage()).match(/data-ai-reader-manifest/g) || []).length, 1);
+    for (const [avatar, expected] of [
+      ['/images/reader-avatar.webp', '/blog/images/reader-avatar.webp'],
+      ['https://images.example.com/avatar.webp', 'https://images.example.com/avatar.webp'],
+      ['javascript:alert(1)', '/blog/ai-reader/avatar.webp'],
+      ['', '/blog/ai-reader/avatar.webp']
+    ]) {
+      hexo.config.ai_reader.player = { avatar, name: '小读<伙伴>', title: '小读 & 陪你读' };
+      await hexo.call('generate', {});
+      assert.ok((await readPage()).includes(`src="${expected}"`));
+      assert.match(await readPage(), /data-ai-greeting>小读 &amp; 陪你读/);
+      assert.match(await readPage(), /aria-label="小读&lt;伙伴&gt; AI 语音导读"/);
+      assert.deepEqual(JSON.parse(await fs.readFile(path.join(directory, '.cache/hexo-ai-reader', key, 'ready-mock.json'), 'utf8')), ready);
+      assert.equal((await fs.stat(cachedAudio)).mtimeMs, before);
+    }
     await hexo.call('ai-reader', { prepare: true, post: 'test' });
     assert.equal((await fs.stat(cachedAudio)).mtimeMs, before);
     await hexo.call('ai-reader', { force: true, post: 'test' });

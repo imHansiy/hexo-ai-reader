@@ -85,6 +85,26 @@ test('换音色只重做语音；换文本模型且稿件相同则复用音频',
   assert.deepEqual(calls, { llm: 2, tts: 2 });
 });
 
+test('人物或提示词变化更新文稿，稿件不变及头像变化不会重复合成语音', async t => {
+  const { options, calls, prepare } = await fixture(t);
+  await prepare();
+  const newGuide = validateGuide({ title: '导读', segments: [{ id: 'g-one', text: '我陪你理解这篇文章。', sourceIds: ['p-one'] }] }, options.sources, 800);
+  options.services.generateGuide = async () => { calls.llm++; return newGuide; };
+  options.config.narration.persona = '海灵陪读';
+  const persona = await prepare();
+  assert.equal(persona.guideCached, false);
+  assert.equal(persona.audioCached, false);
+  assert.deepEqual(calls, { llm: 2, tts: 2 });
+  options.config.narration.systemPrompt = '保留注意事项。';
+  const prompt = await prepare();
+  assert.equal(prompt.guideCached, false);
+  assert.equal(prompt.audioCached, true);
+  assert.deepEqual(calls, { llm: 3, tts: 2 });
+  options.config.player.avatar = '/images/another-avatar.webp';
+  assert.equal((await prepare()).cached, true);
+  assert.deepEqual(calls, { llm: 3, tts: 2 });
+});
+
 test('网络超时、流式开关、密钥和 TTS 端点变化不会重复计费', async t => {
   const { options, calls, prepare } = await fixture(t);
   await prepare();

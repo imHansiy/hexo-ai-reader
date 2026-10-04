@@ -10,7 +10,7 @@
   box-sizing: border-box;
   position: fixed;
   right: max(28px, env(safe-area-inset-right));
-  bottom: max(88px, calc(env(safe-area-inset-bottom) + 24px), var(--air-caption-clearance, 0px));
+  bottom: max(88px, calc(env(safe-area-inset-bottom) + 24px));
   z-index: 1000;
   width: 360px;
   max-width: calc(100vw - 32px);
@@ -84,7 +84,7 @@
 .ai-reader .ai-reader__directory-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ai-reader .ai-reader__options { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--air-track); color: var(--air-muted); font-size: 11px; }
 .ai-reader .ai-reader__options button { padding: 5px; border-radius: 6px; color: inherit; background: transparent; font-size: inherit; }
-.ai-reader .ai-reader__options button:hover, .ai-reader [data-ai-captions-toggle][aria-pressed=true] { color: var(--air-accent); }
+.ai-reader .ai-reader__options button:hover { color: var(--air-accent); }
 .ai-reader .ai-reader__options label { display: flex; align-items: center; gap: 5px; cursor: pointer; white-space: nowrap; }
 .ai-reader input[type=checkbox] { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .ai-reader .ai-reader__switch { position: relative; display: block; width: 24px; height: 14px; border-radius: 8px; background: #bbc8db; transition: background .2s; }
@@ -120,38 +120,6 @@
 @keyframes air-wave { from { transform: scaleY(.35); opacity: .55; } to { transform: scaleY(1); opacity: 1; } }
 @keyframes air-arrive { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes air-breathe { 50% { box-shadow: 0 0 0 5px #3882f611, 0 5px 20px #6085bc24; } }
-.ai-reader-captions {
-  box-sizing: border-box;
-  position: fixed;
-  left: 16px;
-  bottom: max(24px, env(safe-area-inset-bottom));
-  z-index: 1001;
-  width: min(840px, calc(100vw - 32px));
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  min-height: 72px;
-  padding: 14px 16px 14px 22px;
-  border: 1px solid #ffffffd9;
-  border-radius: 18px;
-  color: #244266;
-  background: #fffffff7;
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
-  box-shadow: 0 8px 32px #355c9b20;
-  font: 18px/1.7 system-ui, -apple-system, sans-serif;
-  pointer-events: none;
-}
-.ai-reader-captions[hidden] { display: none !important; }
-.ai-reader-captions__label { flex-shrink: 0; padding-right: 18px; border-right: 1px solid #dce7f7; color: #3882f6; font-size: 12px; line-height: 1.6; letter-spacing: .06em; }
-.ai-reader-captions__label span { display: block; color: #7b8da9; font-size: 10px; letter-spacing: 0; }
-.ai-reader-captions__text { flex: 1; min-width: 0; text-align: center; overflow-wrap: anywhere; }
-.ai-reader-captions button { flex-shrink: 0; display: grid; place-items: center; width: 28px; height: 32px; margin: 0; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #7b8da9; cursor: pointer; pointer-events: auto; }
-.ai-reader-captions button:hover { color: #3882f6; background: #eaf1ff; }
-.ai-reader-captions button:focus-visible { outline: 2px solid #3882f6; outline-offset: 2px; }
-/* 同一位置只显示导读字幕；退出后恢复音乐插件原本的歌词状态。 */
-html.ai-reader-captions-visible #desktopLyrics,
-html.ai-reader-captions-visible .mw-float-lyrics { visibility: hidden !important; }
 [data-ai-reader-body] { position: relative; isolation: isolate; }
 [data-ai-reader-body] [data-ai-source] { scroll-margin-top: 100px; }
 [data-ai-reader-body]::before {
@@ -179,18 +147,14 @@ html.ai-reader-captions-visible .mw-float-lyrics { visibility: hidden !important
 }
 :is([color-scheme="dark"], [data-theme="dark"]) .ai-reader--playing .ai-reader__text { color: #b8d4ff; }
 :is([color-scheme="dark"], [data-theme="dark"]) .ai-reader__directory button[aria-current=true] { color: #c6ddff; }
-:is([color-scheme="dark"], [data-theme="dark"]) .ai-reader-captions { background: #202d40ef; color: #ecf2ff; border-color: #647da542; }
-:is([color-scheme="dark"], [data-theme="dark"]) .ai-reader-captions__label { color: #9bc3ff; border-color: #647da542; }
-:is([color-scheme="dark"], [data-theme="dark"]) .ai-reader-captions button:hover { background: #344b6c; color: #c6ddff; }
 @media (prefers-color-scheme: dark) {
   html:not([color-scheme="light"]):not([data-theme="light"]) .ai-reader { --air-accent: #69a3ff; --air-muted: #a7b7ce; --air-ink: #ecf2ff; --air-surface: rgb(32 45 64 / .94); --air-soft: #344b6c; --air-track: #465773; --air-border: #647da542; color-scheme: dark; }
   html:not([color-scheme="light"]):not([data-theme="light"]) .ai-reader--playing .ai-reader__text { color: #b8d4ff; }
   html:not([color-scheme="light"]):not([data-theme="light"]) .ai-reader__directory button[aria-current=true] { color: #c6ddff; }
-  html:not([color-scheme="light"]):not([data-theme="light"]) .ai-reader-captions { background: #202d40ef; color: #ecf2ff; border-color: #647da542; }
 }
 @media (max-width: 600px) {
   html.ai-reader-panel-open #desktopLyrics, html.ai-reader-panel-open .mw-float-lyrics { visibility: hidden !important; }
-  .ai-reader { right: max(12px, env(safe-area-inset-right)); bottom: max(24px, calc(env(safe-area-inset-bottom) + 12px), var(--air-caption-clearance, 0px)); max-width: calc(100vw - 24px); }
+  .ai-reader { right: max(12px, env(safe-area-inset-right)); bottom: max(24px, calc(env(safe-area-inset-bottom) + 12px)); max-width: calc(100vw - 24px); }
   .ai-reader:not(.ai-reader--expanded):not(.ai-reader--minimized) { width: 320px; }
   .ai-reader:not(.ai-reader--expanded) .ai-reader__bubble { margin-left: 28px; padding: 13px 16px 13px 58px; border-radius: 32px; }
   .ai-reader:not(.ai-reader--expanded) .ai-reader__portrait { width: 72px; height: 72px; top: 12px; padding: 5px; }
@@ -212,11 +176,9 @@ html.ai-reader-captions-visible .mw-float-lyrics { visibility: hidden !important
   .ai-reader--expanded .ai-reader__voice { display: none; }
   .ai-reader .ai-reader__actions button { width: 28px; height: 28px; }
   .ai-reader .ai-reader__options { flex-wrap: wrap; }
-  .ai-reader-captions { bottom: max(12px, env(safe-area-inset-bottom)); min-height: 62px; gap: 10px; padding: 12px 10px 12px 16px; border-radius: 18px; font-size: clamp(13px, 4vw, 16px); }
-  .ai-reader-captions__label { display: none; }
 }
 @media (max-height: 600px) {
-  .ai-reader--expanded .ai-reader__bubble { max-height: calc(100dvh - 150px - var(--air-caption-clearance, 0px)); overflow-y: auto; overscroll-behavior: contain; }
+  .ai-reader--expanded .ai-reader__bubble { max-height: calc(100dvh - 150px); overflow-y: auto; overscroll-behavior: contain; }
 }
 @media (pointer: coarse) {
   .ai-reader [data-ai-progress] { height: 22px; }
@@ -224,4 +186,4 @@ html.ai-reader-captions-visible .mw-float-lyrics { visibility: hidden !important
   .ai-reader .ai-reader__play { width: 42px; height: 42px; }
 }
 @media (prefers-reduced-motion: reduce) { .ai-reader, .ai-reader *, .ai-reader *::after, [data-ai-reader-body]::before, [data-ai-reader-body] [data-ai-source] { transition: none !important; animation: none !important; } }
-@media print { .ai-reader, .ai-reader-captions { display: none; } [data-ai-reader-body]::before { display: none; } }
+@media print { .ai-reader { display: none; } [data-ai-reader-body]::before { display: none; } }

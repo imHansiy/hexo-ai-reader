@@ -122,6 +122,32 @@ test('兼容 API 使用配置地址，校验结构化输出，默认不强制 re
   assert.equal(calls[0].body.response_format, undefined);
 });
 
+test('人物设定和自定义系统提示词用于初稿与压缩，并保留结构及事实约束', async t => {
+  const bodies = [];
+  const config = live();
+  config.narration.persona = '你是海灵，用我和你陪读。';
+  config.narration.systemPrompt = '先解释用途，再提醒使用限制。';
+  t.mock.method(global, 'fetch', async (url, options) => {
+    bodies.push(JSON.parse(options.body));
+    return Response.json({ choices: [{ message: { content: JSON.stringify(rawGuide) } }] });
+  });
+  await generateGuide({ title: '测试' }, sources, config);
+  await generateGuide({ title: '测试' }, sources, config, rawGuide);
+  for (const body of bodies) {
+    assert.deepEqual(body.messages.map(message => message.role), ['system', 'user']);
+    const prompt = body.messages[0].content;
+    assert.ok(prompt.includes(config.narration.persona));
+    assert.ok(prompt.includes(config.narration.systemPrompt));
+    assert.match(prompt, /只输出 JSON/);
+    assert.match(prompt, /不要添加文章没有的事实/);
+    assert.match(prompt, /真实 source id/);
+    assert.match(prompt, /总正文不超过 560 字/);
+    assert.doesNotMatch(body.messages[1].content, /你是海灵/);
+  }
+  assert.deepEqual(JSON.parse(bodies[0].messages[1].content).sources, sources);
+  assert.deepEqual(JSON.parse(bodies[1].messages[1].content).draft, rawGuide);
+});
+
 test('新版百炼只调用一次完整 TTS，正确使用 workspace / instruction / word timestamps', async t => {
   const calls = [];
   const events = [
