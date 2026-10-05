@@ -234,6 +234,53 @@ hexo server -p 6845
 
 发布沿用博客原有的 Hexo 部署流程，包含 `public/ai-reader/` 下的资源。静态产物中没有 API Key，部署后的浏览器不需要 AI 凭据。
 
+### 可选：编译时自动上传到 B2
+
+默认 `storage.provider: local`：生成结果保留在 `.cache/hexo-ai-reader/`，Hexo 编译时输出音频到 `public/ai-reader/`，随博客同域发布。缓存让 `hexo clean` 后仍可直接重新发布，无需再次付费生成；不要把 `public` 当作唯一缓存目录。
+
+要使用 B2，在已有 `ai_reader` 下添加以下配置。文本 AI 和 TTS 配置保持原样：
+
+```yaml
+ai_reader:
+  storage:
+    provider: b2
+    b2:
+      key_id: ${B2_KEY_ID}
+      key: ${B2_KEY}
+      bucket: ${B2_BUCKET}
+      bucket_id: ${B2_BUCKET_ID}
+      region: ${B2_REGION}
+      # 可选：自己的 HTTPS 域名，也可包含回源路径前缀
+      # public_base: https://audio.example.com
+```
+
+在被 Git 忽略的项目 `.env` 中保存变量，或直接用完整 YAML 填写实际值；环境变量不是必需的配置方式：
+
+```dotenv
+B2_KEY_ID=<你的 Application Key ID>
+B2_KEY=<你的 Application Key>
+B2_BUCKET=<你的桶名>
+B2_BUCKET_ID=<你的桶 ID>
+B2_REGION=<桶所在区域，例如 us-east-005>
+# 可选；YAML 的 public_base 优先于此变量
+# B2_PUBLIC_BASE=https://audio.example.com
+```
+
+| `storage.b2` 参数 | 要求与作用 |
+| --- | --- |
+| `key_id`、`key` | 首次上传或缺少上传记录时必填；Key 需要目标桶的 `listFiles`、`readFiles`、`writeFiles` 权限 |
+| `bucket`、`bucket_id` | 必填，已有桶的名称和 ID；插件不创建或删除桶 |
+| `region` | 没有 `public_base` 时必填，用于生成公开 S3 地址 |
+| `public_base` | 可选，公开 HTTPS 基址；省略时读取 `B2_PUBLIC_BASE`，再使用 `https://s3.<region>.backblazeb2.com/<bucket>` |
+| `prefix` | 可选，默认 `ai-reader`；对象名为 `<prefix>/<完整音频 SHA-256>.wav` 或 `.mp3` |
+| `timeout_ms` | 可选，默认 90000，单次存储请求超时 |
+
+自定义域名须提前配置好 DNS、HTTPS 及到对应桶的回源，公开 URL 的路径与对象目录保持一致。填写 `public_base` 只改变播放地址，插件不配置 DNS/CDN。桶或回源服务需要允许访客匿名读取音频；地址不能含用户名、密码、查询参数或片段。站点配置 CSP 时，在 `media-src` 中允许音频域名。上传使用 [B2 Native API](https://www.backblaze.com/apidocs/b2-upload-file)，无需 Python、CLI 或额外存储 SDK。
+
+然后照常执行 `hexo generate`。插件先复用或生成音频，再查重上传，回读远程 SHA-1 和文件大小，并核对公开地址的文件大小及音频开头。验证通过后清单引用公开 URL，`public/ai-reader/` 仅输出清单和播放器，不再输出该音频副本。上传记录保存在 `.cache`，再次编译不上传、不访问 B2；更换域名只验证新地址，密钥轮换不导致重新上传或合成。删除上传记录后会查重远程对象，避免创建重复版本。
+
+上传或公开地址验证失败会保留已生成的文稿和音频；下次正常编译只补存储阶段。强制更新失败不切换旧版指针；普通构建告警，仍符合当前正文的旧版可以继续使用，手动准备/强制命令则返回失败。`auto_generate: false` 只复用已有且已验证的上传记录，不发起存储请求。切回 `provider: local` 会从缓存重新输出本地音频，无需调用 AI。
+
 ### 可选：在全新构建环境复用已经生成的导读
 
 `.cache/hexo-ai-reader/` 是本地缓存，不应提交。如果部署平台每次从 Git 拉取后重新编译，需要把已有音频上传到自己的公开文件存储，并把导读数据保存进对应文章的 Frontmatter。这样云端执行普通 `hexo generate` 就能复用导读，无需 AI 密钥、克隆参考文件或本地缓存。播放器和清单仍由 Hexo 生成，音频直接从公开 HTTPS 地址播放。播放器支持 B2、S3 和 CDN 等其他域名上的公开音频；导读清单仍从博客同域加载。站点若配置 CSP，需在 `media-src` 中允许对应音频域名。
@@ -264,7 +311,7 @@ ai_reader:
 
 正文指纹包含文章标题和全部可导读段落；标题或正文变化后，旧导读不再使用。插件还校验文稿引用、文字哈希、音频校验值格式及有效时长；编译时不下载远程音频，因此公开存储的可达性和文件完整性需在上传时验证。时间轴重新从已保存文稿和时长计算，仍是估算对齐。
 
-已保存的导读作为文章发布版本固定使用，修改模型、人物设定或音色不会自动覆盖它。需要更新时运行 `hexo ai-reader --force`，成功后本地会使用新缓存；重新上传新音频并更新该文章的 `generated`，云端才会使用新版。失败保留原发布版本。清理本地缓存不会删除文章中的已发布导读。普通编译和强制命令都不会自行改写 Markdown 或上传文件。
+已保存的导读作为文章发布版本固定使用，修改模型、人物设定或音色不会自动覆盖它，`storage` 也不会下载或改写它保存的音频地址。需要更新时运行 `hexo ai-reader --force`；若启用 B2，新的音频自动上传，否则使用本地缓存。将新版文稿及最终公开 URL 更新到该文章的 `generated`，全新的云端环境才会使用新版。失败保留原发布版本。清理本地缓存不会删除文章中的已发布导读。普通编译和强制命令都不会自行改写 Markdown；只有显式选择 B2 存储时才自动上传文件。
 
 验证这种部署方式时，在没有 `.cache/`、私有环境文件和参考音频的构建环境执行 `hexo generate`：日志应显示“复用已发布导读”，文章播放器清单的 `audio` 应指向已验证的公开地址，生成文稿和音频数量均为 0。总开关、单篇关闭及加密排除规则仍然有效。
 
@@ -364,6 +411,7 @@ public/ai-reader/
   guides/<文稿版本>/guide.json
   audio/<语音版本>/result.json
   audio/<语音版本>/narration.wav
+  storage/<桶及对象哈希>.json  # 可选的 B2 上传和公开地址验证记录
 ```
 
 百炼音频为 MP3，Qwen3 和 Mock 音频为 WAV。实际时长从音频文件解析，清单只包含导读、时间轴、音频站点路径和公开播放器设置；不会发布接口密钥、文本服务地址、业务空间、音色 ID、脚本路径或完整配置。

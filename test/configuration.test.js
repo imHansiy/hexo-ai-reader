@@ -87,6 +87,26 @@ async function fixture(t, args = {}) {
   return { base, hexo, posts, generate, command, ready };
 }
 
+test('B2 完整 YAML 不读取环境文件，缺少 B2 配置时可从标准 .env 加载', async t => {
+  const { base, hexo, posts, generate } = await fixture(t);
+  posts.forEach(post => { post.ai_reader = false; });
+  hexo.config.ai_reader = { enabled: true, mode: 'live', llm: {
+    base_url: 'https://model.example/v1', api_key: 'yaml-key', model: 'model'
+  }, storage: { provider: 'b2', b2: {
+    key_id: 'id', key: 'key', bucket: 'bucket', bucket_id: 'bucket-id', region: 'us-east-005'
+  } } };
+  await fs.writeFile(path.join(base, '.env'), "KEY='invalid-quote\n");
+  await generate();
+  const previous = process.env.READER_B2_TEST_KEY;
+  t.after(() => { if (previous === undefined) delete process.env.READER_B2_TEST_KEY; else process.env.READER_B2_TEST_KEY = previous; });
+  delete process.env.READER_B2_TEST_KEY;
+  hexo.config.ai_reader.storage.b2.key = '${READER_B2_TEST_KEY}';
+  await fs.writeFile(path.join(base, '.env'), 'READER_B2_TEST_KEY=from-standard-env\n');
+  await generate();
+  assert.equal(resolveConfig(hexo.config.ai_reader).storage.b2.key, 'from-standard-env');
+  assert.equal(resolveConfig({ storage: { provider: 'b2', b2: { key: 'explicit-key' } } }).storage.b2.key, 'explicit-key');
+});
+
 test('编译和手动命令使用 Hexo 已加载的配置及同一缓存目录；不隐式合并本地 YAML', async t => {
   const { base, hexo, generate, command, ready } = await fixture(t);
   hexo.config.ai_reader.auto_generate = false;
