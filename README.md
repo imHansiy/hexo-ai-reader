@@ -193,7 +193,7 @@ ai_reader: true
 
 想默认给全部公开文章生成，设置 `default_enabled: true`。单篇的 `ai_reader: false` 优先，可关闭该文章。也可通过 `include` 数组指定文章 source（如 `_posts/example.md`）或 slug。
 
-加密、带密码、受加密标签保护、未发布或非文章布局的内容始终排除。文章级对象形式也能作为开启标记，但其中的模型、音色和模式不会覆盖全局参数；推荐使用布尔值。
+加密、带密码、受加密标签保护、未发布或非文章布局的内容始终排除。文章级对象形式也能作为开启标记，其中的模型、音色和模式不会覆盖全局参数；首次生成推荐使用布尔值。已发布文稿和音频可以通过对象内的 `generated` 保存，见下文。
 
 ## 4. 编译、预览和发布
 
@@ -233,6 +233,40 @@ hexo server -p 6845
 - 再次编译显示命中缓存，生成文稿和音频数量均为 0。
 
 发布沿用博客原有的 Hexo 部署流程，包含 `public/ai-reader/` 下的资源。静态产物中没有 API Key，部署后的浏览器不需要 AI 凭据。
+
+### 可选：在全新构建环境复用已经生成的导读
+
+`.cache/hexo-ai-reader/` 是本地缓存，不应提交。如果部署平台每次从 Git 拉取后重新编译，需要把已有音频上传到自己的公开文件存储，并把导读数据保存进对应文章的 Frontmatter。这样云端执行普通 `hexo generate` 就能复用导读，无需 AI 密钥、克隆参考文件或本地缓存。播放器和清单仍由 Hexo 生成，音频直接从公开 HTTPS 地址播放。
+
+`ai_reader.generated` 的结构如下。这是产物字段说明，指纹和校验值必须取自实际缓存，不能直接复制占位符：
+
+```yaml
+ai_reader:
+  generated:
+    version: 1
+    source_hash: '<ready-live.json 的 sourceHash>'
+    audio_key: '<ready-live.json 的 audioKey>'
+    audio:
+      url: https://cdn.example.com/files/narration.wav
+      sha256: '<音频 result.json 的 audioHash>'
+      text_hash: '<音频 result.json 的 textHash>'
+      duration: 86.5
+    guide:
+      title: 示例导读
+      segments:
+        - id: guide-1
+          text: 这里保存实际生成的朗读文字。
+          sourceIds:
+            - '<文稿中的真实正文 source ID>'
+```
+
+在 `.cache/hexo-ai-reader/<文章目录>/` 中，`ready-live.json` 指向 `guides/<guideKey>/guide.json` 和 `audio/<audioKey>/result.json`。`guide` 取文稿记录中的 `title` 和 `segments`，时长取音频记录中的 `duration`；上传的是同目录的 `narration.wav` 或 `narration.mp3`，上传后先验证公开链接可播放，再填写 `audio.url`。音频地址必须是无用户名、密码、查询参数及片段的 HTTPS URL，不能使用带凭据的临时签名链接。不要把 API 参数、模型配置、参考录音或私有路径写入文章。
+
+正文指纹包含文章标题和全部可导读段落；标题或正文变化后，旧导读不再使用。插件还校验文稿引用、文字哈希、音频校验值格式及有效时长；编译时不下载远程音频，因此公开存储的可达性和文件完整性需在上传时验证。时间轴重新从已保存文稿和时长计算，仍是估算对齐。
+
+已保存的导读作为文章发布版本固定使用，修改模型、人物设定或音色不会自动覆盖它。需要更新时运行 `hexo ai-reader --force`，成功后本地会使用新缓存；重新上传新音频并更新该文章的 `generated`，云端才会使用新版。失败保留原发布版本。清理本地缓存不会删除文章中的已发布导读。普通编译和强制命令都不会自行改写 Markdown 或上传文件。
+
+验证这种部署方式时，在没有 `.cache/`、`.env.ai-reader` 和参考音频的构建环境执行 `hexo generate`：日志应显示“复用已发布导读”，文章播放器清单的 `audio` 应指向已验证的公开地址，生成文稿和音频数量均为 0。总开关、单篇关闭及加密排除规则仍然有效。
 
 ## 5. 强制重新生成
 
