@@ -40,9 +40,19 @@
     }
   }
 
+  function resolveStaticUrl(value, base, { allowExternalAudio = false } = {}) {
+    const url = new URL(value, base);
+    const sameOrigin = url.origin === new URL(base).origin;
+    const publicAudio = allowExternalAudio && url.protocol === 'https:' && !url.search && !url.hash;
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || (!sameOrigin && !publicAudio)) {
+      throw new Error('静态资源地址无效');
+    }
+    return url.href;
+  }
+
   // 同一份浏览器实现可通过 Node 测试存储失效与请求取消，无需运行模型。
   if (typeof window === 'undefined') {
-    if (typeof module !== 'undefined') module.exports = { createProgressStore, loadManifest };
+    if (typeof module !== 'undefined') module.exports = { createProgressStore, loadManifest, resolveStaticUrl };
     return;
   }
   if (window.__hexoAIReader) { window.__hexoAIReader.scan(); return; }
@@ -66,11 +76,7 @@
   };
   // 浏览器会把 currentTime 截到微秒；允许 1ms 误差，避免跳到章节边界后误选上一段。
   const containsTime = (item, time) => time + 0.001 >= item.start && time + 0.001 < item.end;
-  const sameOrigin = value => {
-    const url = new URL(value, location.href);
-    if (url.origin !== location.origin || !['http:', 'https:'].includes(url.protocol)) throw new Error('静态资源地址无效');
-    return url.href;
-  };
+  const sameOrigin = value => resolveStaticUrl(value, location.href);
 
   function mount(source) {
     const body = source.nextElementSibling;
@@ -369,7 +375,7 @@
           captionEnd = cue.end;
         }
         if (loaded.captions?.length && Math.abs(captionEnd - loaded.duration) > 0.1) throw new Error('字幕时长不匹配');
-        const audioUrl = sameOrigin(loaded.audio);
+        const audioUrl = resolveStaticUrl(loaded.audio, location.href, { allowExternalAudio: true });
         manifest = loaded;
         progress = createProgressStore(() => localStorage, manifest);
         pendingResume = progress.read() || null;
