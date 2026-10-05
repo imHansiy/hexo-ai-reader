@@ -93,6 +93,7 @@ test('编译和手动命令使用 Hexo 已加载的配置及同一缓存目录�
   hexo.config.ai_reader.cache_dir = '.cache/custom';
   await fs.writeFile(path.join(base, '_config.local.yml'), 'ai_reader:\n  auto_generate: true\n  cache_dir: .cache/unwanted\n');
   await fs.writeFile(path.join(base, '.env.ai-reader'), "KEY='invalid-quote\n");
+  await fs.writeFile(path.join(base, '.env'), "KEY='invalid-quote\n");
   await generate();
   assert.equal(hexo.config.ai_reader.auto_generate, false);
   await assert.rejects(ready(undefined, '.cache/custom'));
@@ -139,6 +140,7 @@ test('完整 YAML 配置无需私有环境文件，且优先于遗留环境变�
   for (const name of names) process.env[name] = 'stale-environment-value';
   process.env.AI_READER_MODE = 'mock';
   await fs.writeFile(path.join(base, '.env.ai-reader'), "KEY='invalid-quote\n");
+  await fs.writeFile(path.join(base, '.env'), "KEY='invalid-quote\n");
   await generate();
   const config = resolveConfig(hexo.config.ai_reader);
   assert.doesNotThrow(() => assertLiveConfig(config));
@@ -163,4 +165,29 @@ test('指定单篇强制生成不会重新生成其他文章；加密文章不�
   assert.notEqual((await ready(posts[0])).audioKey, one.audioKey);
   assert.deepEqual(await ready(posts[1]), two);
   await assert.rejects(fs.access(path.join(base, '.cache/hexo-ai-reader', articleKey(protectedPost))));
+});
+
+test('标准 .env 优先于旧文件，旧文件补缺，进程环境仍优先；无需实际生成', async t => {
+  const { base, hexo, posts, generate } = await fixture(t);
+  const names = ['READER_TEST_URL', 'READER_TEST_KEY', 'READER_TEST_MODEL'];
+  const previous = Object.fromEntries(names.map(name => [name, process.env[name]]));
+  t.after(() => { for (const name of names) {
+    if (previous[name] === undefined) delete process.env[name]; else process.env[name] = previous[name];
+  } });
+  for (const name of names) delete process.env[name];
+  for (const post of posts) post.ai_reader = false;
+  hexo.config.ai_reader = { enabled: true, mode: 'live', llm: {
+    base_url: '${READER_TEST_URL}', api_key: '${READER_TEST_KEY}', model: '${READER_TEST_MODEL}'
+  } };
+  await fs.writeFile(path.join(base, '.env'), 'READER_TEST_URL=https://primary.example.com/v1\nREADER_TEST_KEY=primary-key\n');
+  await fs.writeFile(path.join(base, '.env.ai-reader'), 'READER_TEST_URL=https://legacy.example.com/v1\nREADER_TEST_KEY=legacy-key\nREADER_TEST_MODEL=legacy-model\n');
+  await generate();
+  let config = resolveConfig(hexo.config.ai_reader);
+  assert.equal(config.llm.baseUrl, 'https://primary.example.com/v1');
+  assert.equal(config.llm.apiKey, 'primary-key');
+  assert.equal(config.llm.model, 'legacy-model');
+  process.env.READER_TEST_KEY = 'ci-key';
+  await generate();
+  config = resolveConfig(hexo.config.ai_reader);
+  assert.equal(config.llm.apiKey, 'ci-key');
 });

@@ -75,7 +75,7 @@ hexo generate --config _config.yml,_config.local.yml
 
 ### 可选：用环境变量保存私有值
 
-接口信息可以直接写在 YAML 中；完整 YAML 配置不依赖 `.env.ai-reader`。配置要提交到 Git 时，可用环境变量引用保护私有值，例如：
+接口信息可以直接写在 YAML 中；完整 YAML 配置不依赖环境文件。配置要提交到 Git 时，可用环境变量引用保护私有值，例如：
 
 ```yaml
 # 合并到已有的 ai_reader 中，其他字段仍按上面的最小配置填写
@@ -85,16 +85,16 @@ ai_reader:
     api_key: ${OPENAI_API_KEY}
 ```
 
-在运行 Hexo 的环境中设置这些变量，或在博客根目录创建被 Git 忽略的 `.env.ai-reader`：
+在运行 Hexo 的环境中设置这些变量，或合并进博客根目录被 Git 忽略的 `.env`：
 
 ```dotenv
 OPENAI_BASE_URL='https://api.example.com/v1'
 OPENAI_API_KEY='<你的文本模型密钥>'
 ```
 
-本仓库提供 [环境文件示例](.env.ai-reader.example)。将需要的变量复制到博客根目录的 `.env.ai-reader`，并通过 YAML 引用；默认 Qwen3 无需百炼变量、脚本或 Python 路径。
+本仓库提供 [环境文件示例](.env.ai-reader.example)。将需要的变量合并到博客根目录的 `.env`，保留其他插件已有变量，并通过 YAML 引用；默认 Qwen3 无需百炼变量、脚本或 Python 路径。旧 `.env.ai-reader` 仍兼容，只补充 `.env` 和进程环境中尚未设置的变量；统一配置后可以删除旧文件。
 
-`${...}` 是本插件支持的替换方式，不是 Hexo 对所有配置的通用功能。已有进程环境变量优先于环境文件；YAML 中直接填写的值优先于环境变量回退值。环境文件只解析赋值，不执行 shell。Mock 模式不读取该文件。
+`${...}` 是本插件支持的替换方式，不是 Hexo 对所有配置的通用功能。优先级为明确 YAML 值、进程环境、`.env`、旧 `.env.ai-reader`；环境文件只解析赋值，不执行 shell。Mock 模式和完整 YAML 配置不读取环境文件。
 
 修改环境文件后，重启正在运行的 Hexo 服务器；重新执行 `hexo generate` 会启动新进程并读取配置。
 
@@ -266,7 +266,7 @@ ai_reader:
 
 已保存的导读作为文章发布版本固定使用，修改模型、人物设定或音色不会自动覆盖它。需要更新时运行 `hexo ai-reader --force`，成功后本地会使用新缓存；重新上传新音频并更新该文章的 `generated`，云端才会使用新版。失败保留原发布版本。清理本地缓存不会删除文章中的已发布导读。普通编译和强制命令都不会自行改写 Markdown 或上传文件。
 
-验证这种部署方式时，在没有 `.cache/`、`.env.ai-reader` 和参考音频的构建环境执行 `hexo generate`：日志应显示“复用已发布导读”，文章播放器清单的 `audio` 应指向已验证的公开地址，生成文稿和音频数量均为 0。总开关、单篇关闭及加密排除规则仍然有效。
+验证这种部署方式时，在没有 `.cache/`、私有环境文件和参考音频的构建环境执行 `hexo generate`：日志应显示“复用已发布导读”，文章播放器清单的 `audio` 应指向已验证的公开地址，生成文稿和音频数量均为 0。总开关、单篇关闭及加密排除规则仍然有效。
 
 ## 5. 强制重新生成
 
@@ -375,6 +375,7 @@ public/ai-reader/
 缓存和私有配置保持 Git 忽略。在博客根目录的 `.gitignore` 中至少加入：
 
 ```gitignore
+.env
 .env.ai-reader
 .cache/hexo-ai-reader/
 public/
