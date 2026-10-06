@@ -67,36 +67,9 @@ ai_reader:
 
 文本默认使用 SSE 流式输出，导读默认不超过 800 字。超时、缓存路径和播放器参数都有默认值，无需再复制一份完整参数清单。Qwen3 使用公开共享服务，导读文本及参考音频不能包含保密内容；服务停机或排队会影响首次生成，已有缓存可继续发布。
 
-配置以 **Hexo 已加载的 YAML** 为准。插件不会自行读取或合并 `_config.local.yml`。需要多文件配置时，通过 Hexo 的参数显式指定，并在后续编译、预览和强制命令中使用同一组配置：
+所有参数写在 Hexo 默认的根目录 `_config.yml` → `ai_reader` 中，使用标准命令 `hexo generate`、`hexo server` 和 `hexo ai-reader --force`，不要求额外配置文件或命令封装。可参考 [YAML 配置示例](config.example.yml)。
 
-```bash
-hexo generate --config _config.yml,_config.local.yml
-```
-
-### 可选：用私有 YAML 保存凭据
-
-所有参数只从 Hexo 已加载的 YAML 配置读取。插件不读取 `.env`、旧 `.env.ai-reader` 或进程环境，不展开 `${变量名}`。原来使用这些方式时，将实际值迁移到 `ai_reader.llm`、`ai_reader.tts`、`ai_reader.storage.b2` 等 YAML 字段；缺少真实生成参数会报错，已有有效发布导读仍可在无凭据环境复用。
-
-若 `_config.yml` 需要提交到 Git，把密钥和私有接口地址放到被 Git 忽略的 `_config.private.yml`，例如：
-
-```yaml
-ai_reader:
-  llm:
-    base_url: https://api.example.com/v1
-    api_key: '<你的文本模型密钥>'
-    model: '<你的文本模型 ID>'
-```
-
-在 `.gitignore` 中添加 `/_config.private.yml`。通过 Hexo 标准参数合并配置：
-
-```bash
-hexo generate --config _config.yml,_config.private.yml
-hexo server --config _config.yml,_config.private.yml
-hexo ai-reader --force --config _config.yml,_config.private.yml
-```
-
-插件不隐式合并私有文件；生成、预览和强制命令使用同一组配置。完整参数直接写在单份 YAML 中时，照常使用 `hexo generate`。不要把含真实凭据的 YAML 提交到仓库、文章或 PR。可参考 [YAML 配置示例](config.example.yml)。
-
+插件不读取 `.env`、旧 `.env.ai-reader` 或进程环境，不展开 `${变量名}`。旧配置请将实际值填写到 YAML 的 `llm`、`tts`、`storage.b2` 等字段；缺少真实生成参数会报错，已有有效发布导读仍可在无凭据环境复用。不要将含真实密钥的本地配置提交到仓库、文章或 PR。
 ### 可选：切换阿里百炼
 
 保持文本接口和文章开关，将 `tts` 改为：
@@ -112,7 +85,7 @@ ai_reader:
     voice: '<与模型匹配的音色 ID>'
 ```
 
-示例使用 3.0 Plus，音色必须与该模型匹配。切换百炼模型时核对音色绑定关系和账号权限。密钥和音色直接填写在 YAML 中；私有配置按上面的标准 `--config` 方式合并。
+示例使用 3.0 Plus，音色必须与该模型匹配。切换百炼模型时核对音色绑定关系和账号权限。密钥和音色直接填写在根目录 `_config.yml` 的 `ai_reader.tts` 中。
 
 ### 可选：Qwen3 音色与外部模块
 
@@ -238,7 +211,7 @@ hexo server -p 6845
 
 默认 `storage.provider: local`：生成结果保留在 `.cache/hexo-ai-reader/`，Hexo 编译时输出音频到 `public/ai-reader/`，随博客同域发布。缓存让 `hexo clean` 后仍可直接重新发布，无需再次付费生成；不要把 `public` 当作唯一缓存目录。
 
-要使用 B2，在已有 `ai_reader` 下添加以下 YAML 参数。文本 AI 和 TTS 配置保持原样，真实密钥可放在私有 YAML 中：
+要使用 B2，在已有 `ai_reader` 下添加以下 YAML 参数。文本 AI 和 TTS 配置保持原样，直接填写 YAML 参数：
 
 ```yaml
 ai_reader:
@@ -408,7 +381,6 @@ public/ai-reader/
 缓存和私有配置保持 Git 忽略。在博客根目录的 `.gitignore` 中至少加入：
 
 ```gitignore
-_config.private.yml
 .cache/hexo-ai-reader/
 public/
 db.json
@@ -450,7 +422,7 @@ Mock 不调用外部 AI。macOS 可通过系统 `say` 生成完整 WAV；无可�
 | 现象 | 可能原因 | 处理 |
 | --- | --- | --- |
 | 页面无播放器，文章正常显示 | 未开启、被保护，或生成失败且没有匹配缓存 | 检查文章和全局开关，再查看跳过警告；修正后重新编译 |
-| 报告缺少配置 | 必填 YAML 字段为空或仍使用旧环境变量占位符 | 填写实际 YAML 参数；私有文件通过 Hexo `--config` 显式加载 |
+| 报告缺少配置 | 必填 YAML 字段为空或仍使用旧环境变量占位符 | 在根目录 `_config.yml` 填写实际参数 |
 | API 返回 401/403 | 密钥或账号权限不匹配 | 核对对应服务的 Key、模型和音色权限 |
 | API 返回 400 | 模型、音色、端点或输入不匹配 | 核对配置和音色绑定关系 |
 | Qwen3 模块或参考文件不可读取 | 路径不存在或当前构建环境不具备该文件 | 核对 Node 22+、模块文件及 `tts.qwen3` 的参考路径 |
@@ -460,7 +432,7 @@ Mock 不调用外部 AI。macOS 可通过系统 `say` 生成完整 WAV；无可�
 | 显示导读加载失败 | 清单或音频不可访问、超时 | 点击播放键重试，检查部署路径和网络响应 |
 | 提示已有准备或清理进程 | 共享缓存目录有活动任务 | 等待日志中的 PID 对应任务结束，勿抢删仍在使用的锁 |
 | 出现 Mock 提示音 | 当前系统无可用演示音色 | 只用于交互验证；真实生成使用 live 配置 |
-| 修改配置后仍是旧版 | 新版本生成失败并保留旧版，或 YAML 未加载 | 检查日志和 `--config`；修改 YAML 后重新编译或重启服务器 |
+| 修改配置后仍是旧版 | 新版本生成失败并保留旧版，或 YAML 未加载 | 检查根目录 `_config.yml` 和日志；修改 YAML 后重新编译或重启服务器 |
 | 命中缓存却没有生成数量 | 有效缓存被复用 | 属于正常结果；确需重做时使用 `--force` |
 
 ## 10. 开发与验证

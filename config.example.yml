@@ -1,4 +1,4 @@
-# 合并到 Hexo 根配置；含真实凭据时请使用 Git 忽略的私有 YAML。
+# 将 ai_reader 合并到 Hexo 根目录 _config.yml；不要提交真实凭据。
 ai_reader:
   enabled: true
   default_enabled: false

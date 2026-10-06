@@ -11,8 +11,8 @@
 ## 配置与日常使用
 
 - 插件通过标准 Hexo 包入口注册，参数集中在博客根 `_config.yml` 的 `ai_reader` 下。文本接口使用 `llm`，百炼语音使用 `tts`；接口地址、模型、密钥和音色都可直接写 YAML。
-- 配置来源是 Hexo 已加载的 `hexo.config`。多文件合并由 Hexo 的 `--config` 完成，插件和便捷入口不得隐式合并本地 YAML。
-- 参数仅来自 Hexo 已加载的 YAML：不读取 .env、旧 .env.ai-reader 或进程环境，不展开环境变量占位符，不隐式合并私有 YAML。密钥和私有地址可放在 Git 忽略的 _config.private.yml，用户通过 Hexo --config 显式加载；单文件完整配置仍正常使用 hexo generate。缺少参数按阶段报错，环境值不得改变默认值或生成缓存。
+- 配置使用 Hexo 默认根目录 _config.yml 的 ai_reader，来源为 Hexo 已加载的 hexo.config。不要求第二份 YAML、--config 参数或插件专用命令封装，日常直接执行 hexo generate。
+- 参数仅来自 YAML：不读取 .env、旧 .env.ai-reader 或进程环境，不展开环境变量占位符，不隐式合并其他配置文件。缺少参数按阶段报错，环境值不得改变默认值或生成缓存；本地真实凭据不提交到仓库或 PR。
 - 日常编译使用 `hexo generate`，在 `before_generate` 自动补齐缺失或失效阶段；有效缓存跳过模型调用。不要增加必需的独立生成命令或把 `--prepare` 写成前置步骤。
 - 保留 `hexo ai-reader --force`，支持 source 或 slug 指定单篇，省略范围时处理所有已开启且合格的文章。`--prepare` 是可选补齐，不能等同于强制更新。
 - `default_enabled` 默认关闭，文章用 `ai_reader: true` 开启；显式关闭、加密、密码保护、受保护标签和未发布内容不得进入生成或发布路径。
