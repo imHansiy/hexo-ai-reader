@@ -2,13 +2,29 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createProgressStore, loadManifest } = require('../assets/reader');
+const { createProgressStore, loadManifest, resolveStaticUrl } = require('../assets/reader');
 
 function storage() {
   const data = new Map();
   return { data, getItem: key => data.get(key) ?? null, setItem: (key, value) => data.set(key, value), removeItem: key => data.delete(key) };
 }
 const manifest = { article: 'post-one', audio: '/ai-reader/post-one/narration.mp3?v=abc', duration: 87 };
+
+test('本地音频和公开 HTTPS 存储音频可播放，清单仍限制同源', () => {
+  const base = 'http://localhost:4000/blog/p/article/';
+  const options = { allowExternalAudio: true };
+  assert.equal(resolveStaticUrl('/blog/ai-reader/narration.wav?v=abc', base, options),
+    'http://localhost:4000/blog/ai-reader/narration.wav?v=abc');
+  assert.equal(resolveStaticUrl('../manifest.json?v=abc', base), 'http://localhost:4000/blog/p/manifest.json?v=abc');
+  const publishedAudio = 'https://bucket.s3.example.com/files/narration.wav';
+  assert.equal(resolveStaticUrl(publishedAudio, base, options), publishedAudio);
+  assert.throws(() => resolveStaticUrl(publishedAudio, base), /静态资源地址无效/);
+  for (const url of ['http://cdn.example.com/audio.wav', 'https://user:secret@cdn.example.com/audio.wav',
+    'https://cdn.example.com/audio.wav?token=secret', 'https://cdn.example.com/audio.wav#fragment',
+    'javascript:alert(1)', 'data:audio/wav;base64,AAAA', 'file:///audio.wav']) {
+    assert.throws(() => resolveStaticUrl(url, base, options), /静态资源地址无效/);
+  }
+});
 
 test('进度按文章和音频版本隔离，结束或从头播放后不恢复', () => {
   const memory = storage(), progress = createProgressStore(() => memory, manifest);

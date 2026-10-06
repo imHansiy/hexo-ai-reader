@@ -1,0 +1,36 @@
+# 将 ai_reader 合并到 Hexo 根目录 _config.yml；不要提交真实凭据。
+ai_reader:
+  enabled: true
+  default_enabled: false
+  llm:
+    base_url: https://api.example.com/v1
+    api_key: '<你的文本模型密钥>'
+    model: '<你的文本模型 ID>'
+  tts:
+    provider: qwen3
+    qwen3:
+      command: say
+      speaker: Serena
+      # host: '<可选的 HF Space 主机名>'
+      # hf_token: '<可选的 HF Token>'
+    # 切换到 dashscope 时填写以下字段：
+    # api_key: '<你的百炼密钥>'
+    # model: qwen-audio-3.0-tts-plus
+    # voice: '<与模型匹配的音色 ID>'
+  storage:
+    provider: local # 改为 b2 才自动上传
+    b2:
+      key_id: '<你的 Application Key ID>'
+      key: '<你的 Application Key>'
+      bucket: '<你的桶名>'
+      bucket_id: '<你的桶 ID>'
+      region: us-east-005
+      # public_base: https://audio.example.com
+      prefix: ai-reader
+  narration:
+    persona: ''
+    system_prompt: ''
+  player:
+    name: 海灵
+    title: ''
+    avatar: ''

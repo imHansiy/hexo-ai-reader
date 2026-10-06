@@ -16,8 +16,8 @@
     "README.md",
     "DESIGN_REVIEW.md",
     "AGENTS.md",
-    "LICENSE",
-    ".env.ai-reader.example"
+    "config.example.yml",
+    "LICENSE"
   ],
   "scripts": {
     "test": "node --test test/*.test.js"
