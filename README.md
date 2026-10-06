@@ -58,7 +58,7 @@ ai_reader:
 | `tts.qwen3.command` | 否，默认 `say` | 使用预置音色；克隆或音色设计见后文 |
 | `tts.qwen3.speaker` | 否，默认 `Serena` | 预置说话人，默认中文、自然语气 |
 | `tts.api_key` | 百炼生成必填 | 百炼密钥，需拥有对应模型和音色权限；Qwen3 渠道无需百炼凭据 |
-| `tts.model` | 建议明确填写 | 与音色绑定的模型；未填时兼容读取 `TTS_MODEL`，再回退到 `qwen-audio-3.1-tts-flash` |
+| `tts.model` | 建议明确填写 | 与音色绑定的模型；未填时默认使用 `qwen-audio-3.1-tts-flash` |
 | `tts.voice` | 百炼生成必填 | 接口返回的音色 ID，不是音色显示名称 |
 | `tts.endpoint` | 否 | 默认通用百炼端点；填写后优先于业务空间推导地址 |
 | `tts.workspace_id` | 否 | 需要专属业务空间域名时填写；使用通用端点不要求额外填写 |
@@ -73,30 +73,29 @@ ai_reader:
 hexo generate --config _config.yml,_config.local.yml
 ```
 
-### 可选：用环境变量保存私有值
+### 可选：用私有 YAML 保存凭据
 
-接口信息可以直接写在 YAML 中；完整 YAML 配置不依赖环境文件。配置要提交到 Git 时，可用环境变量引用保护私有值，例如：
+所有参数只从 Hexo 已加载的 YAML 配置读取。插件不读取 `.env`、旧 `.env.ai-reader` 或进程环境，不展开 `${变量名}`。原来使用这些方式时，将实际值迁移到 `ai_reader.llm`、`ai_reader.tts`、`ai_reader.storage.b2` 等 YAML 字段；缺少真实生成参数会报错，已有有效发布导读仍可在无凭据环境复用。
+
+若 `_config.yml` 需要提交到 Git，把密钥和私有接口地址放到被 Git 忽略的 `_config.private.yml`，例如：
 
 ```yaml
-# 合并到已有的 ai_reader 中，其他字段仍按上面的最小配置填写
 ai_reader:
   llm:
-    base_url: ${OPENAI_BASE_URL}
-    api_key: ${OPENAI_API_KEY}
+    base_url: https://api.example.com/v1
+    api_key: '<你的文本模型密钥>'
+    model: '<你的文本模型 ID>'
 ```
 
-在运行 Hexo 的环境中设置这些变量，或合并进博客根目录被 Git 忽略的 `.env`：
+在 `.gitignore` 中添加 `/_config.private.yml`。通过 Hexo 标准参数合并配置：
 
-```dotenv
-OPENAI_BASE_URL='https://api.example.com/v1'
-OPENAI_API_KEY='<你的文本模型密钥>'
+```bash
+hexo generate --config _config.yml,_config.private.yml
+hexo server --config _config.yml,_config.private.yml
+hexo ai-reader --force --config _config.yml,_config.private.yml
 ```
 
-本仓库提供 [环境文件示例](.env.ai-reader.example)。将需要的变量合并到博客根目录的 `.env`，保留其他插件已有变量，并通过 YAML 引用；默认 Qwen3 无需百炼变量、脚本或 Python 路径。旧 `.env.ai-reader` 仍兼容，只补充 `.env` 和进程环境中尚未设置的变量；统一配置后可以删除旧文件。
-
-`${...}` 是本插件支持的替换方式，不是 Hexo 对所有配置的通用功能。优先级为明确 YAML 值、进程环境、`.env`、旧 `.env.ai-reader`；环境文件只解析赋值，不执行 shell。Mock 模式和完整 YAML 配置不读取环境文件。
-
-修改环境文件后，重启正在运行的 Hexo 服务器；重新执行 `hexo generate` 会启动新进程并读取配置。
+插件不隐式合并私有文件；生成、预览和强制命令使用同一组配置。完整参数直接写在单份 YAML 中时，照常使用 `hexo generate`。不要把含真实凭据的 YAML 提交到仓库、文章或 PR。可参考 [YAML 配置示例](config.example.yml)。
 
 ### 可选：切换阿里百炼
 
@@ -113,7 +112,7 @@ ai_reader:
     voice: '<与模型匹配的音色 ID>'
 ```
 
-示例使用 3.0 Plus，音色必须与该模型匹配。切换百炼模型时核对音色绑定关系和账号权限。如用环境变量保存私有值，可将密钥和音色改为 `${DASHSCOPE_API_KEY}`、`${TTS_VOICE_ID}` 引用，并填写对应变量。
+示例使用 3.0 Plus，音色必须与该模型匹配。切换百炼模型时核对音色绑定关系和账号权限。密钥和音色直接填写在 YAML 中；私有配置按上面的标准 `--config` 方式合并。
 
 ### 可选：Qwen3 音色与外部模块
 
@@ -149,7 +148,8 @@ node node_modules/hexo-ai-reader/lib/qwen3-tts.mjs doctor
 | `tts.qwen3` 参数 | 默认值或必填条件 | 用途 |
 | --- | --- | --- |
 | `module` | 内置 `lib/qwen3-tts.mjs` | 可指定兼容的外部模块；支持 `QWEN3_TTS_MODULE` 回退，需确保该文件存在 |
-| `python` / `python_script` | 默认空，仅旧桥接脚本需要 | 显式覆盖旧脚本解释器和 CLI 路径，支持 `${...}`；内置实现不使用它们 |
+| `python` / `python_script` | 默认空，仅旧桥接脚本需要 | 显式覆盖旧脚本解释器和 CLI 路径；内置实现不使用它们 |
+| `host` / `hf_token` | 默认公开服务 / 空 | 可选 HF Space 主机名和 Token，仅从 YAML 读取，不从进程环境继承 |
 | `command` | `say` | `voice` 配置音色、`say` 预置音色、`clone` 参考音频克隆、`design` 音色设计 |
 | `speaker` / `instruct` | `Serena` / `Neutral` | `say` 的说话人和语气 |
 | `language` / `model_size` | `Chinese` / `1.7B` | `say`、`clone` 的语言和模型大小；`design` 使用语言参数 |
@@ -238,40 +238,27 @@ hexo server -p 6845
 
 默认 `storage.provider: local`：生成结果保留在 `.cache/hexo-ai-reader/`，Hexo 编译时输出音频到 `public/ai-reader/`，随博客同域发布。缓存让 `hexo clean` 后仍可直接重新发布，无需再次付费生成；不要把 `public` 当作唯一缓存目录。
 
-要使用 B2，在已有 `ai_reader` 下添加以下配置。文本 AI 和 TTS 配置保持原样：
+要使用 B2，在已有 `ai_reader` 下添加以下 YAML 参数。文本 AI 和 TTS 配置保持原样，真实密钥可放在私有 YAML 中：
 
 ```yaml
 ai_reader:
   storage:
     provider: b2
     b2:
-      key_id: ${B2_KEY_ID}
-      key: ${B2_KEY}
-      bucket: ${B2_BUCKET}
-      bucket_id: ${B2_BUCKET_ID}
-      region: ${B2_REGION}
+      key_id: '<你的 Application Key ID>'
+      key: '<你的 Application Key>'
+      bucket: '<你的桶名>'
+      bucket_id: '<你的桶 ID>'
+      region: us-east-005
       # 可选：自己的 HTTPS 域名，也可包含回源路径前缀
       # public_base: https://audio.example.com
 ```
-
-在被 Git 忽略的项目 `.env` 中保存变量，或直接用完整 YAML 填写实际值；环境变量不是必需的配置方式：
-
-```dotenv
-B2_KEY_ID=<你的 Application Key ID>
-B2_KEY=<你的 Application Key>
-B2_BUCKET=<你的桶名>
-B2_BUCKET_ID=<你的桶 ID>
-B2_REGION=<桶所在区域，例如 us-east-005>
-# 可选；YAML 的 public_base 优先于此变量
-# B2_PUBLIC_BASE=https://audio.example.com
-```
-
 | `storage.b2` 参数 | 要求与作用 |
 | --- | --- |
 | `key_id`、`key` | 首次上传或缺少上传记录时必填；Key 需要目标桶的 `listFiles`、`readFiles`、`writeFiles` 权限 |
 | `bucket`、`bucket_id` | 必填，已有桶的名称和 ID；插件不创建或删除桶 |
 | `region` | 没有 `public_base` 时必填，用于生成公开 S3 地址 |
-| `public_base` | 可选，公开 HTTPS 基址；省略时读取 `B2_PUBLIC_BASE`，再使用 `https://s3.<region>.backblazeb2.com/<bucket>` |
+| `public_base` | 可选，公开 HTTPS 基址；省略时使用 `https://s3.<region>.backblazeb2.com/<bucket>` |
 | `prefix` | 可选，默认 `ai-reader`；对象名为 `<prefix>/<完整音频 SHA-256>.wav` 或 `.mp3` |
 | `timeout_ms` | 可选，默认 90000，单次存储请求超时 |
 
@@ -390,8 +377,6 @@ ai_reader:
 
 留空或省略新增提示词不会让已有文稿缓存失效。修改人物设定、系统提示词或风格后，下次 `hexo generate` 会生成新文稿；文本变化时补齐语音，文本相同则复用音频。只换头像、显示名或标题会复用文稿和音频，无需强制生成。
 
-已有配置仍兼容环境变量回退：文本的 `OPENAI_BASE_URL`、`OPENAI_API_KEY`、`OPENAI_MODEL`；语音的 `DASHSCOPE_API_KEY`、`TTS_MODEL`、`TTS_VOICE_ID`（或 `HAILING_VOICE_ID`）、`DASHSCOPE_TTS_ENDPOINT`、`DASHSCOPE_WORKSPACE_ID`；模式的 `AI_READER_MODE`。新配置优先按 YAML 字段填写。
-
 ## 7. 缓存、持久化和并发
 
 发布资源与构建缓存分开：
@@ -423,8 +408,7 @@ public/ai-reader/
 缓存和私有配置保持 Git 忽略。在博客根目录的 `.gitignore` 中至少加入：
 
 ```gitignore
-.env
-.env.ai-reader
+_config.private.yml
 .cache/hexo-ai-reader/
 public/
 db.json
@@ -466,7 +450,7 @@ Mock 不调用外部 AI。macOS 可通过系统 `say` 生成完整 WAV；无可�
 | 现象 | 可能原因 | 处理 |
 | --- | --- | --- |
 | 页面无播放器，文章正常显示 | 未开启、被保护，或生成失败且没有匹配缓存 | 检查文章和全局开关，再查看跳过警告；修正后重新编译 |
-| 报告缺少配置 | 必填字段为空或环境引用未解析 | 按报错的 YAML 字段补齐；检查变量来自当前构建环境 |
+| 报告缺少配置 | 必填 YAML 字段为空或仍使用旧环境变量占位符 | 填写实际 YAML 参数；私有文件通过 Hexo `--config` 显式加载 |
 | API 返回 401/403 | 密钥或账号权限不匹配 | 核对对应服务的 Key、模型和音色权限 |
 | API 返回 400 | 模型、音色、端点或输入不匹配 | 核对配置和音色绑定关系 |
 | Qwen3 模块或参考文件不可读取 | 路径不存在或当前构建环境不具备该文件 | 核对 Node 22+、模块文件及 `tts.qwen3` 的参考路径 |
@@ -476,7 +460,7 @@ Mock 不调用外部 AI。macOS 可通过系统 `say` 生成完整 WAV；无可�
 | 显示导读加载失败 | 清单或音频不可访问、超时 | 点击播放键重试，检查部署路径和网络响应 |
 | 提示已有准备或清理进程 | 共享缓存目录有活动任务 | 等待日志中的 PID 对应任务结束，勿抢删仍在使用的锁 |
 | 出现 Mock 提示音 | 当前系统无可用演示音色 | 只用于交互验证；真实生成使用 live 配置 |
-| 修改配置后仍是旧版 | 新版本生成失败并保留旧版，或配置未加载 | 检查日志和 `--config`；环境文件变更后重启服务器 |
+| 修改配置后仍是旧版 | 新版本生成失败并保留旧版，或 YAML 未加载 | 检查日志和 `--config`；修改 YAML 后重新编译或重启服务器 |
 | 命中缓存却没有生成数量 | 有效缓存被复用 | 属于正常结果；确需重做时使用 `--force` |
 
 ## 10. 开发与验证
@@ -497,7 +481,7 @@ git diff --check
 | 文件 | 职责 |
 | --- | --- |
 | `index.js`、`lib/plugin.js` | Hexo 生命周期、静态路由、播放器注入及控制台命令 |
-| `lib/config.js`、`lib/environment.js` | YAML 参数、默认值和可选环境文件解析 |
+| `lib/config.js`、`config.example.yml` | YAML 参数、默认值和配置示例 |
 | `lib/source.js` | 正文提取、稳定 ID、文章标识和缓存哈希 |
 | `lib/providers.js` | 文本接口、百炼 TTS、响应校验和 Mock |
 | `lib/qwen3-tts.mjs` | 内置纯 JS Qwen3 协议、生成、下载与音频检查 |

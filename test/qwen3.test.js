@@ -42,7 +42,8 @@ import { fileURLToPath } from 'node:url';
 const base=path.dirname(fileURLToPath(import.meta.url));
 async function call(params, opts) {
   ${body}
-  await fs.writeFile(path.join(base,'received.json'),JSON.stringify({params,opts,python:process.env.QWEN3_TTS_PY}));
+  await fs.writeFile(path.join(base,'received.json'),JSON.stringify({params,opts,python:process.env.QWEN3_TTS_PY,
+    hostEnv:process.env.QWEN3_TTS_HOST, tokenEnv:process.env.QWEN3_TTS_HF_TOKEN, voiceEnv:process.env.QWEN3_TTS_VOICE_CFG}));
   await fs.copyFile(path.join(base,'voice.wav'),params.output);
   return ${legacy ? "{exitCode:0,data:{ok:true,status:'Success',saved_to:params.output}}" : "{ok:true,status:'Success',saved_to:params.output}"};
 }
@@ -242,4 +243,21 @@ test('真实 Hexo 通过 Qwen3 渠道输出 WAV 和播放器，第二次编译�
   await hexo.call('generate', {});
   assert.equal(calls, 1);
   assert.equal((await fs.stat(received)).mtimeMs, time);
+});
+
+test('Qwen3 子进程只接受 YAML 参数，旧的进程变量不影响主机、Token、音色或 Python', async t => {
+  const names = ['QWEN3_TTS_HOST', 'QWEN3_TTS_HF_TOKEN', 'QWEN3_TTS_VOICE_CFG', 'QWEN3_TTS_PY'];
+  const previous = Object.fromEntries(names.map(name => [name, process.env[name]]));
+  t.after(() => { for (const name of names) {
+    if (previous[name] === undefined) delete process.env[name]; else process.env[name] = previous[name];
+  } });
+  for (const name of names) process.env[name] = 'stale-env';
+  const { config, base } = await fixture(t);
+  config.tts.qwen3.host = 'space.example.com';
+  config.tts.qwen3.hfToken = 'yaml-token';
+  await synthesize('测试。', config, base);
+  const received = JSON.parse(await fs.readFile(path.join(base, 'received.json'), 'utf8'));
+  assert.equal(received.opts.host, 'space.example.com');
+  assert.equal(received.opts.hfToken, 'yaml-token');
+  for (const name of ['python', 'hostEnv', 'tokenEnv', 'voiceEnv']) assert.equal(received[name], undefined);
 });
